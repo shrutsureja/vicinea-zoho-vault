@@ -57,6 +57,9 @@ The form regression test exercises these semantics without live credentials.
   Lock Vault rows also use Enter. Keep the returning unlock form description-free.
 - Search matches names, all returned URLs and usernames across words, locally and
   case-insensitively. Decrypted index data is session-only; never index passwords.
+- Zoho secrets pagination is zero-based (`pageNum=0` first). Never start at 1:
+  it silently skips the first page. Validate against `operation.meta.secretcount`
+  when available and show loaded/filter counts plus version in the footer.
 - Missing list fields must not become blanket unsupported labels. Re-fetch details
   before copying. Keep specific status messages for unavailable keys/permissions.
 - OneAuth links use an explicit push-and-poll action (src/oneauth.ts), with the

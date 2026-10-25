@@ -229,14 +229,31 @@ export async function loadSession(token: string, password: string, options: Sess
     const userId = String(user.USERID ?? "");
     const entries = new Map<string, Entry>();
     let completed = false;
-    for (let page = 1; page <= 100; page++) {
+    let expectedTotal: number | undefined;
+    // Zoho's browser extension uses zero-based pageNum. Starting at 1 omits
+    // the entire first page, even though later requests can succeed normally.
+    for (let page = 0; page < 100; page++) {
       const op = await vaultGet(`/api/rest/json/v1/secrets?isAsc=true&pageNum=${page}&rowPerPage=100`, token, options.region);
       const details = op.Details ?? op.details;
       if (!Array.isArray(details)) throw new Error("Unexpected password-list format. No partial vault was opened.");
-      if (details.length === 0) { completed = true; break; }
+      const meta = op.meta && typeof op.meta === "object" && !Array.isArray(op.meta) ? op.meta as Obj : {};
+      if ((typeof meta.secretcount === "number" || typeof meta.secretcount === "string") && /^\d+$/.test(String(meta.secretcount))) {
+        const total = Number(meta.secretcount);
+        if (!Number.isSafeInteger(total)) throw new Error("Unexpected password count from Zoho.");
+        if (expectedTotal !== undefined && total !== expectedTotal) throw new Error("The vault changed while loading. Unlock again to refresh all entries.");
+        expectedTotal = total;
+      }
+      if (details.length === 0) {
+        if (expectedTotal !== undefined && entries.size !== expectedTotal) throw new Error("Zoho returned fewer entries than its password count. No partial vault was opened.");
+        completed = true; break;
+      }
       let added = 0;
       for (const row of details) { const entry = parseEntry(row, userId); if (!entries.has(entry.id)) { entries.set(entry.id, entry); added++; } }
       if (added === 0) throw new Error("Zoho repeated a page. No partial vault was opened.");
+      if (expectedTotal !== undefined && entries.size >= expectedTotal) {
+        if (entries.size !== expectedTotal) throw new Error("Zoho's password count did not match the loaded entries. Unlock again to refresh.");
+        completed = true; break;
+      }
     }
     if (!completed) throw new Error("Vault exceeds this version's pagination limit. No partial vault was opened.");
     let organizationKeyError = "";

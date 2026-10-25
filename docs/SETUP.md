@@ -113,7 +113,9 @@ Unsupported entries remain listed with an action to open Zoho Vault.
 
 1. Unlock by entering your master password and pressing **Enter**. The returning
    unlock screen contains only that field; settings stay in the action panel.
-2. Search by login name, any returned URL, or username. Matching is case-insensitive;
+2. Check the footer for the installed version and loaded-entry count. Clear the
+   search to see all loaded entries; with a query the count shows matches/loaded.
+   Search by login name, any returned URL, or username. Matching is case-insensitive;
    multiple words can match across these fields. Search stays on your PC.
 3. Select a login and press **Enter** to load its latest details. This does not copy
    a password or open a browser automatically.
@@ -218,6 +220,7 @@ unlock across restarts. Hiding the launcher may leave the command running.
 | Organization key unavailable | Check Vault sharing approval and API permissions; missing key material cannot be guessed |
 | Unsupported login algorithm | Legacy SHA256 login is not implemented; use the official Vault app |
 | Password list or permissions rejected | Verify current account API access and scopes; failure alone does not prove an upgrade is necessary |
+| Missing passwords after upgrading from v0.3.0 | v0.3.1 fixes skipped page zero. Close and reopen the command, unlock again and compare the loaded count with Vault |
 | Command missing after build | Check the build output path and reopen Vicinae if needed |
 
 ## Disconnect and remove

@@ -5,6 +5,7 @@ import { openCredentials, sealCredentials } from "./crypto";
 import { Entry, VaultSession, loadSession, matchesEntry, refresh, tokenRequest } from "./vault";
 import { endpoints, lockDuration, lockLabel, region } from "./settings";
 import { readScreenLocked, watchScreenLock } from "./screen-lock";
+import { version } from "../package.json";
 
 function preferences() {
   const p = getPreferenceValues<{ autoLock?: string; lockOnPcLock?: boolean; region?: string }>();
@@ -155,7 +156,7 @@ export default function Command() {
 
   if (!session) {
     const setup = !saved || reconnect;
-    return <Form key={formId} navigationTitle={setup ? "Connect Zoho Vault" : "Unlock Zoho Vault"} isLoading={busy || saved === undefined} enableDrafts={false}
+    return <Form key={formId} navigationTitle={`${setup ? "Connect" : "Unlock"} Zoho Vault · v${version}`} isLoading={busy || saved === undefined} enableDrafts={false}
       actions={<ActionPanel>
         {saved !== undefined && <Action.SubmitForm title={setup ? "Connect and Unlock" : "Unlock Vault"} shortcut={{ modifiers: [], key: "return" }} onSubmit={submit} />}
         {settingsAction}
@@ -208,7 +209,8 @@ export default function Command() {
   }
 
   const entries = session.entries.filter(entry => matchesEntry(entry, query));
-  return <List navigationTitle={`Zoho Vault · ${policyLabel}`} isLoading={busy} searchText={query} onSearchTextChange={setQuery} filtering={false} searchBarPlaceholder="Search name, URL or username…"
+  const count = query.trim() ? `${entries.length}/${session.entries.length}` : String(session.entries.length);
+  return <List navigationTitle={`Zoho Vault v${version} · ${count} entries · ${policyLabel}`} isLoading={busy} searchText={query} onSearchTextChange={setQuery} filtering={false} searchBarPlaceholder="Search name, URL or username…"
     actions={<ActionPanel><Action title="Lock Vault" icon={Icon.Lock} onAction={lock} />{settingsAction}</ActionPanel>}>
     <List.EmptyView title={query ? "No matching entries" : "No entries found"} description="Use the action panel to lock your vault." />
     {entries.map(entry => <List.Item key={entry.id} title={entry.name} subtitle={[entry.username, entry.url].filter(Boolean).join(" · ")}

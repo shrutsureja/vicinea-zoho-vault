@@ -138,15 +138,17 @@ test("Enter opens details without copying; field rows open/copy explicitly and l
     const path = String(url);
     if (path.includes("/oauth/v2/token")) return new Response(JSON.stringify({ access_token: "synthetic" }));
     if (path.includes("GET_LOGIN")) return ok({ LOGIN: "PBKDF2_AES", SALT: "fixture-salt", ITERATION: 1000, PASSPHRASE: "AAECAwQFBgeVgI0gb5GxloH/R859RzPC" }, "details");
-    if (path.includes("pageNum=2")) return ok([]);
+    if (path.includes("pageNum=1")) return ok([]);
     return ok([row]);
   };
   try {
     const saved = await sealCredentials({ clientId: "synthetic", clientSecret: "synthetic", refreshToken: "synthetic", region: "in" }, master);
     renderer = await render(saved);
     await act(async () => { await renderer!.root.findByType("native-submit").props.onSubmit(nativeValues(renderer!, { master })); });
+    assert.match(renderer.root.findByType("native-list").props.navigationTitle, /1 entries/);
     await act(async () => { renderer!.root.findByType("native-list").props.onSearchTextChange("HELLO@EXAMPLE.COM"); });
     assert.equal(renderer.root.findAllByType("native-item").length, 1);
+    assert.match(renderer.root.findByType("native-list").props.navigationTitle, /1\/1 entries/);
     const entry = renderer.root.findByType("native-item");
     assert.equal(entry.findAllByType("native-action")[0].props.title, "View Login Details");
     await act(async () => { await entry.findAllByType("native-action")[0].props.onAction(); });

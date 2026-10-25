@@ -8,6 +8,7 @@ passwords, usernames, and time-based verification codes.
 ## Features
 
 - Search names, all returned website URLs and decrypted usernames locally.
+- Show the installed version and loaded/matching entry counts in the footer.
 - Press Enter to view a login, then use arrow-key rows and a side preview.
 - Open the website first, or copy a username, password, TOTP or URL.
 - Copy without adding secrets to Vicinae history.

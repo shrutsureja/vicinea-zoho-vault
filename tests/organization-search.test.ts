@@ -68,8 +68,8 @@ test("unlock gets the organization key with fallback and handles missing list fi
   globalThis.fetch = async url => {
     const path = String(url); urls.push(path);
     if (path.includes("GET_LOGIN")) return ok(metadata, "details");
-    if (path.includes("pageNum=1")) return ok([row]);
-    if (path.includes("pageNum=2")) return ok([]);
+    if (path.includes("pageNum=0")) return ok([row]);
+    if (path.includes("pageNum=1")) return ok([]);
     if (path.endsWith("/user/orgkey")) return new Response("{}", { status: 403 });
     if (path.includes("OPEN_VAULT")) return ok({ PRIVATEKEY: data.privateKey, SHARINGKEY: data.sharedKey }, "details");
     return ok([row]);
