@@ -70,8 +70,8 @@ test("copy rechecks permissions, checks lock after an in-flight request, and exp
   try {
     globalThis.fetch = async () => ok([row]);
     assert.equal(await session.copyValue("123", "password"), "P@ssw0rd — नमस्ते");
-    globalThis.fetch = async () => ok([{ ...row, isshared: "YES" }]);
-    await assert.rejects(session.copyValue("123", "password"), /organization key/);
+    globalThis.fetch = async () => ok([{ ...row, isshared: "YES", sharingtype: "SHARED_TO_ME", sharinglevel: 20 }]);
+    await assert.rejects(session.copyValue("123", "password"), /view\/copy access/);
     globalThis.fetch = async () => { session.lock(); return ok([row]); };
     await assert.rejects(session.copyValue("123", "password"), /locked/);
     assert.ok(key.every(byte => byte === 0));

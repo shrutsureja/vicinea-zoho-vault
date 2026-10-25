@@ -17,15 +17,18 @@ const apiStub = `
   });
   export const Action = Object.assign(native("native-action"), { SubmitForm: native("native-submit"), OpenInBrowser: native("native-open") });
   export const ActionPanel = props => React.createElement(React.Fragment, null, props.children);
-  export const List = Object.assign(native("native-list"), { EmptyView: native("native-empty"), Item: native("native-item") });
+  const Metadata = Object.assign(props => React.createElement("native-metadata", props, props.children), { Label: native("native-label") });
+  const ItemDetail = Object.assign(props => React.createElement("native-detail", props, props.metadata), { Metadata });
+  const Item = Object.assign(props => React.createElement("native-item", props, props.detail, props.actions), { Detail: ItemDetail });
+  export const List = Object.assign(props => React.createElement("native-list", props, props.children, props.actions), { EmptyView: native("native-empty"), Item });
   export const LocalStorage = { getItem: async () => globalThis.__vaultFormSaved, setItem: async () => { throw Error("Unexpected persistence in failed-request test"); } };
   export const getPreferenceValues = () => ({ lockOnPcLock: false, region: "in", autoLock: "5" });
   export const Icon = { Lock: "lock", Key: "key", CopyClipboard: "copy" };
   export const Toast = { Style: { Success: "success", Failure: "failure" } };
   export const showToast = async () => {};
   export const openExtensionPreferences = async () => {};
-  export const open = async () => {};
-  export const Clipboard = { readText: async () => "", clear: async () => {}, copy: async () => {} };
+  export const open = async url => { globalThis.__vaultOpened = url; };
+  export const Clipboard = { readText: async () => globalThis.__vaultCopied || "", clear: async () => { globalThis.__vaultCopied = ""; }, copy: async value => { globalThis.__vaultCopied = value; } };
 `;
 
 let command: ComponentType;
@@ -45,7 +48,7 @@ async function loadCommand() {
   return command;
 }
 
-const bridge = globalThis as typeof globalThis & { __vaultFormSaved?: string; IS_REACT_ACT_ENVIRONMENT?: boolean };
+const bridge = globalThis as typeof globalThis & { __vaultFormSaved?: string; __vaultOpened?: string; __vaultCopied?: string; IS_REACT_ACT_ENVIRONMENT?: boolean };
 bridge.IS_REACT_ACT_ENVIRONMENT = true;
 
 async function render(saved?: string) {
@@ -114,11 +117,55 @@ test("saved connection unlock includes the master field and decrypts locally bef
     const saved = await sealCredentials({ clientId: "synthetic", clientSecret: "synthetic", refreshToken: "synthetic-refresh", region: "in" }, master);
     renderer = await render(saved);
     assert.equal(renderer.root.findAllByType("native-password").length, 1);
+    assert.equal(renderer.root.findAllByType("native-description").length, 0);
+    assert.deepEqual(renderer.root.findByType("native-submit").props.shortcut, { modifiers: [], key: "return" });
     const values = nativeValues(renderer, { master });
     await act(async () => { await renderer!.root.findByType("native-submit").props.onSubmit(values); });
     assert.ok(refreshed);
   } finally {
     if (renderer) await act(async () => renderer!.unmount());
     globalThis.fetch = original; delete bridge.__vaultFormSaved;
+  }
+});
+
+test("Enter opens details without copying; field rows open/copy explicitly and locking removes the preview", async () => {
+  const original = globalThis.fetch; let renderer: ReactTestRenderer | undefined;
+  const master = "Example master password 42";
+  const row = { secretid: "123", secretname: "Synthetic login", isshared: "NO", secreturl: "https://example.com/",
+    secretData: JSON.stringify({ username: "AAECAwQFBgeGx4cleKWhnIWwDdZqHDXQPw==", password: "AAECAwQFBge+4pg6YNW2gMQ//S4v0vIXsjaWqMwVSkJHQu8MhhxG" }) };
+  const ok = (value: unknown, key = "Details") => new Response(JSON.stringify({ operation: { result: { status: "Success" }, [key]: value } }));
+  globalThis.fetch = async url => {
+    const path = String(url);
+    if (path.includes("/oauth/v2/token")) return new Response(JSON.stringify({ access_token: "synthetic" }));
+    if (path.includes("GET_LOGIN")) return ok({ LOGIN: "PBKDF2_AES", SALT: "fixture-salt", ITERATION: 1000, PASSPHRASE: "AAECAwQFBgeVgI0gb5GxloH/R859RzPC" }, "details");
+    if (path.includes("pageNum=2")) return ok([]);
+    return ok([row]);
+  };
+  try {
+    const saved = await sealCredentials({ clientId: "synthetic", clientSecret: "synthetic", refreshToken: "synthetic", region: "in" }, master);
+    renderer = await render(saved);
+    await act(async () => { await renderer!.root.findByType("native-submit").props.onSubmit(nativeValues(renderer!, { master })); });
+    await act(async () => { renderer!.root.findByType("native-list").props.onSearchTextChange("HELLO@EXAMPLE.COM"); });
+    assert.equal(renderer.root.findAllByType("native-item").length, 1);
+    const entry = renderer.root.findByType("native-item");
+    assert.equal(entry.findAllByType("native-action")[0].props.title, "View Login Details");
+    await act(async () => { await entry.findAllByType("native-action")[0].props.onAction(); });
+    assert.equal(bridge.__vaultCopied, undefined);
+    assert.equal(renderer.root.findByType("native-list").props.isShowingDetail, true);
+    const rows = renderer.root.findAllByType("native-item");
+    assert.deepEqual(rows.map(row => row.props.id), ["open", "username", "password", "totp", "url", "back", "lock"]);
+    assert.equal(rows[0].findAllByType("native-action")[0].props.title, "Open Website");
+    await act(async () => { await rows[0].findAllByType("native-action")[0].props.onAction(); });
+    assert.equal(bridge.__vaultOpened, "https://example.com/");
+    const username = renderer.root.findAllByType("native-item").find(item => item.props.id === "username")!;
+    await act(async () => { await username.findAllByType("native-action")[0].props.onAction(); });
+    assert.equal(bridge.__vaultCopied, "hello@example.com");
+    assert.ok(renderer.root.findAllByType("native-label").filter(label => label.props.title === "Password").every(label => label.props.text === "••••••••"));
+    await act(async () => { renderer!.root.findAllByType("native-action").find(action => action.props.title === "Lock Vault")!.props.onAction(); });
+    assert.equal(renderer.root.findAllByType("native-detail").length, 0);
+    assert.equal(renderer.root.findAllByType("native-password").length, 1);
+  } finally {
+    if (renderer) await act(async () => renderer!.unmount());
+    globalThis.fetch = original; delete bridge.__vaultFormSaved; delete bridge.__vaultCopied; delete bridge.__vaultOpened;
   }
 });

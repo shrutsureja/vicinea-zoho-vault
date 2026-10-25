@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, pbkdf2, randomBytes, scrypt } from "node:crypto";
+import { constants, createCipheriv, createDecipheriv, createPrivateKey, privateDecrypt, pbkdf2, randomBytes, scrypt } from "node:crypto";
 import { promisify } from "node:util";
 import { Region, region } from "./settings";
 
@@ -17,6 +17,43 @@ export function fieldKey(masterHex: string): Buffer {
   const key = Buffer.concat([block, block]);
   block.fill(0);
   return key;
+}
+
+// Zoho's older RSA key is eight comma-separated hex integers and a hex PKCS#1
+// v1.5 ciphertext. New accounts use a base64 PKCS#8 key and RSA-OAEP/SHA-256.
+// RSA itself is performed by Node/OpenSSL, including its private-key blinding.
+export function organizationKey(encryptedPrivateKey: string, wrappedKey: string, personalKey: Buffer): Buffer {
+  let plain: Buffer | undefined;
+  try {
+    const privateText = decryptField(encryptedPrivateKey, personalKey);
+    const parts = privateText.split(",");
+    if (parts.length === 8) {
+      const bytes = parts.map(part => {
+        if (!/^[0-9a-f]+$/i.test(part) || part.length > 4096) throw new Error();
+        const buffer = Buffer.from(part.length % 2 ? "0" + part : part, "hex");
+        let start = 0;
+        while (start < buffer.length - 1 && buffer[start] === 0) start++;
+        return buffer.subarray(start);
+      });
+      try {
+        const [n, e, d, p, q, dp, dq, qi] = bytes.map(b => b.toString("base64url"));
+        const rsa = createPrivateKey({ key: { kty: "RSA", n, e, d, p, q, dp, dq, qi }, format: "jwk" });
+        if (!/^[0-9a-f]+$/i.test(wrappedKey) || wrappedKey.length > bytes[0].length * 2) throw new Error();
+        const encrypted = Buffer.from(wrappedKey.padStart(bytes[0].length * 2, "0"), "hex");
+        plain = privateDecrypt({ key: rsa, padding: constants.RSA_NO_PADDING }, encrypted);
+        // Validate EME-PKCS1-v1_5 locally. This is not an exposed decryption service;
+        // every failure returns the same message and nothing is sent to a server.
+        const separator = plain.indexOf(0, 2);
+        if (plain[0] !== 0 || plain[1] !== 2 || separator < 10 || separator >= plain.length - 1) throw new Error();
+        return fieldKey(decodeText(plain.subarray(separator + 1)));
+      } finally { bytes.forEach(b => b.fill(0)); }
+    }
+    const rsa = privateText.includes("-----BEGIN") ? createPrivateKey(privateText) : createPrivateKey({ key: Buffer.from(privateText, "base64"), format: "der", type: "pkcs8" });
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(wrappedKey)) throw new Error();
+    plain = privateDecrypt({ key: rsa, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: "sha256" }, Buffer.from(wrappedKey, "base64"));
+    return fieldKey(decodeText(plain));
+  } catch { throw new Error("Could not unlock the organization key for these entries."); }
+  finally { plain?.fill(0); }
 }
 
 // Zoho's legacy UTF-8 routine encodes UTF-16 surrogate halves separately.

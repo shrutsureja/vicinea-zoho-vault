@@ -2,7 +2,7 @@ import { Action, ActionPanel, Clipboard, Form, Icon, List, LocalStorage, Toast, 
 import { createHash } from "node:crypto";
 import { useEffect, useRef, useState } from "react";
 import { openCredentials, sealCredentials } from "./crypto";
-import { VaultSession, loadSession, refresh, tokenRequest } from "./vault";
+import { Entry, VaultSession, loadSession, matchesEntry, refresh, tokenRequest } from "./vault";
 import { endpoints, lockDuration, lockLabel, region } from "./settings";
 import { readScreenLocked, watchScreenLock } from "./screen-lock";
 
@@ -20,6 +20,8 @@ export default function Command() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [details, setDetails] = useState<Entry | null>(null);
+  const [oneAuthWaiting, setOneAuthWaiting] = useState(false);
   const [reconnect, setReconnect] = useState(false);
   const [formId, setFormId] = useState(0);
   const [policyLabel, setPolicyLabel] = useState("");
@@ -46,7 +48,7 @@ export default function Command() {
     copyGeneration.current++;
     current.current?.lock(); current.current = null;
     void clearOwnedClipboard();
-    if (live.current) { setSession(null); setQuery(""); setFormId(x => x + 1); }
+    if (live.current) { setSession(null); setDetails(null); setOneAuthWaiting(false); setQuery(""); setFormId(x => x + 1); }
   }
 
   useEffect(() => {
@@ -110,7 +112,20 @@ export default function Command() {
     }
   }
 
-  async function copy(id: string, field: "password" | "username" | "totp") {
+  async function showDetails(id: string) {
+    if (working.current) return;
+    const active = current.current;
+    if (!active?.isOpen()) { lock(); return; }
+    working.current = true; setBusy(true);
+    try {
+      const entry = await active.getDetails(id);
+      if (live.current && current.current === active && active.isOpen()) setDetails(entry);
+    } catch (err) {
+      if (live.current) await showToast({ style: Toast.Style.Failure, title: "Could not load login", message: err instanceof Error ? err.message : "Try unlocking again." });
+    } finally { working.current = false; if (live.current) setBusy(false); }
+  }
+
+  async function copy(id: string, field: "password" | "username" | "totp" | "url") {
     if (working.current) return;
     const active = current.current;
     if (!active?.isOpen()) { lock(); return; }
@@ -121,61 +136,95 @@ export default function Command() {
         try { if (await readScreenLocked()) { lock(); throw new Error("PC is locked."); } }
         catch (err) { lock(); throw err; }
       }
-      const otp = field === "totp" ? await active.copyTotp(id) : undefined;
-      const value = otp ? otp.code : await active.copyValue(id, field as "password" | "username");
+      const otp = field === "totp" ? await active.copyTotp(id, () => { if (live.current) setOneAuthWaiting(true); }) : undefined;
+      const value = otp ? otp.code : await active.copyValue(id, field as "password" | "username" | "url");
       if (!live.current || current.current !== active || !active.isOpen() || generation !== copyGeneration.current) return;
       if (copyTimer.current) clearTimeout(copyTimer.current);
       await Clipboard.copy(value, { concealed: true });
       clipboardHash.current = hash(value);
-      if (!live.current || !active.isOpen() || current.current !== active || generation !== copyGeneration.current || (otp && Date.now() >= otp.expiresAt)) {
+      if (!live.current || !active.isOpen() || current.current !== active || generation !== copyGeneration.current || (otp?.expiresAt !== undefined && Date.now() >= otp.expiresAt)) {
         await clearOwnedClipboard(); return;
       }
-      const clearMs = otp ? Math.max(1, Math.min(30_000, otp.expiresAt - Date.now())) : 30_000;
+      const clearMs = otp?.expiresAt !== undefined ? Math.max(1, Math.min(30_000, otp.expiresAt - Date.now())) : 30_000;
       copyTimer.current = setTimeout(() => { void clearOwnedClipboard(); }, clearMs);
-      await showToast({ style: Toast.Style.Success, title: field === "totp" ? "Verification code copied" : field === "password" ? "Password copied" : "Username copied", message: otp ? `Valid for ${Math.ceil((otp.expiresAt - Date.now()) / 1000)} seconds. Clipboard clears by expiry while running.` : "Clears in 30 seconds while this command is running." });
+      await showToast({ style: Toast.Style.Success, title: field === "totp" ? "Verification code copied" : field === "password" ? "Password copied" : field === "url" ? "URL copied" : "Username copied", message: otp?.source === "oneauth" ? "OneAuth approved. Use this code now." : otp?.expiresAt !== undefined ? `Valid for ${Math.ceil((otp.expiresAt - Date.now()) / 1000)} seconds. Clipboard clears by expiry while running.` : "Clears in 30 seconds while this command is running." });
     } catch (err) {
       if (live.current) await showToast({ style: Toast.Style.Failure, title: "Could not copy", message: err instanceof Error ? err.message : "Unlock and try again." });
-    } finally { working.current = false; if (live.current) setBusy(false); }
+    } finally { working.current = false; if (live.current) { setBusy(false); setOneAuthWaiting(false); } }
   }
 
   if (!session) {
     const setup = !saved || reconnect;
     return <Form key={formId} navigationTitle={setup ? "Connect Zoho Vault" : "Unlock Zoho Vault"} isLoading={busy || saved === undefined} enableDrafts={false}
       actions={<ActionPanel>
-        {saved !== undefined && <Action.SubmitForm title={setup ? "Connect and Unlock" : "Unlock Vault"} onSubmit={submit} />}
+        {saved !== undefined && <Action.SubmitForm title={setup ? "Connect and Unlock" : "Unlock Vault"} shortcut={{ modifiers: [], key: "return" }} onSubmit={submit} />}
         {settingsAction}
         <Action title="Open API Console" onAction={() => open(endpoints(configured.region).console + "/")} />
         {saved && <Action title={reconnect ? "Cancel Reconnect" : "Reconnect Account"} onAction={() => { setReconnect(x => !x); setError(""); setFormId(x => x + 1); }} />}
       </ActionPanel>}>
-      <Form.Description text={setup ? `Data center: ${endpoints(configured.region).vault}. Generate a NEW Self Client code with scopes ZohoVault.secrets.READ,ZohoVault.user.READ.` : "Enter your Zoho Vault master password to unlock."} />
-      <Form.Description title="Lock settings" text={`${lockLabel(configured.autoLock)}${configured.lockOnPcLock ? "; also on PC lock (GNOME)" : ""}. Closing the command always locks. Change these in Extension Settings; they apply on your next unlock.`} />
+      {setup && <Form.Description text={`Connect your ${endpoints(configured.region).vault} account with a fresh Self Client code. Scopes: ZohoVault.secrets.READ,ZohoVault.user.READ.`} />}
       {setup && <>
         {/* storeValue controls submission, not disk persistence. Drafts stay disabled on Form. */}
         <Form.PasswordField id="clientId" title="Client ID" onChange={() => setError("")} />
         <Form.PasswordField id="clientSecret" title="Client Secret" onChange={() => setError("")} />
         <Form.PasswordField id="code" title="Fresh Code" onChange={() => setError("")} />
       </>}
-      <Form.PasswordField id="master" title="Master Password" onChange={() => setError("")} error={error || undefined} />
-      <Form.Description text="Your master password stays local. Saved connection credentials are encrypted with it. Supports PBKDF2_AES personal-key entries and stored TOTP; organization keys, linked OneAuth secrets and passkeys are not supported." />
+      <Form.PasswordField id="master" title="Master Password" autoFocus={!setup} onChange={() => setError("")} error={error || undefined} />
     </Form>;
   }
 
-  const entries = session.entries.filter(entry => `${entry.name} ${entry.url}`.toLowerCase().includes(query.toLowerCase()));
-  return <List navigationTitle={`Zoho Vault · ${policyLabel}`} isLoading={busy} searchText={query} onSearchTextChange={setQuery} filtering={false} searchBarPlaceholder="Search names or websites…"
+  if (details) {
+    type Kind = "open" | "username" | "password" | "totp" | "url";
+    const back = <Action title="Back to Search" onAction={() => setDetails(null)} shortcut={{ modifiers: ["alt"], key: "arrowLeft" }} />;
+    const actions = (primary: Kind) => {
+      const order: Kind[] = [primary, ...(["open", "username", "password", "totp", "url"] as Kind[]).filter(kind => kind !== primary)];
+      return <ActionPanel>{order.map(kind => {
+        if (kind === "open") return details.url ? <Action key={kind} title="Open Website" onAction={() => open(details.url)} shortcut={{ modifiers: ["ctrl"], key: "o" }} /> : null;
+        if (!details.canRead) return null;
+        const names = { username: "Copy Username", password: "Copy Password", totp: !details.hasTotp && details.oneAuthId ? "Request OneAuth Code" : "Copy Verification Code", url: "Copy URL" };
+        const keys = { username: "u", password: "p", totp: "t", url: "y" } as const;
+        return <Action key={kind} title={names[kind]} onAction={() => copy(details.id, kind)} shortcut={{ modifiers: ["ctrl"], key: keys[kind] }} />;
+      })}{oneAuthWaiting && <Action title="Cancel OneAuth Request" onAction={() => current.current?.cancelOneAuth()} />}{back}<Action title="Lock Vault" onAction={lock} shortcut={{ modifiers: ["ctrl"], key: "l" }} />{settingsAction}<Action.OpenInBrowser title="Open Zoho Vault" url={endpoints(session.region).vault + "/"} /></ActionPanel>;
+    };
+    const preview = <List.Item.Detail metadata={<List.Item.Detail.Metadata>
+      <List.Item.Detail.Metadata.Label title="Login" text={details.name} />
+      {details.username && <List.Item.Detail.Metadata.Label title="Username" text={details.username} />}
+      <List.Item.Detail.Metadata.Label title="Password" text="••••••••" />
+      {details.url && <List.Item.Detail.Metadata.Label title="Website" text={details.url} />}
+      <List.Item.Detail.Metadata.Label title="Verification code" text={oneAuthWaiting ? "Approve the request in OneAuth…" : details.hasTotp ? "Vault TOTP · Ctrl+T to copy" : details.oneAuthId ? "OneAuth · Ctrl+T to request approval" : "Not stored in this entry"} />
+      {details.reason && <List.Item.Detail.Metadata.Label title="Status" text={details.reason} />}
+    </List.Item.Detail.Metadata>} />;
+    return <List navigationTitle={details.name} isLoading={busy} isShowingDetail searchBarPlaceholder="↑/↓ choose · Enter run · Alt+← back" actions={actions(details.url ? "open" : "username")}>
+      {details.url && <List.Item id="open" title="Open Website" subtitle={details.url} detail={preview} actions={actions("open")} />}
+      {details.canRead && <>
+        <List.Item id="username" title="Username" subtitle={details.username || "Copy from login"} detail={preview} actions={actions("username")} />
+        <List.Item id="password" title="Password" subtitle="••••••••" detail={preview} actions={actions("password")} />
+        <List.Item id="totp" title={!details.hasTotp && details.oneAuthId ? "Request OneAuth Code" : "Verification Code"} subtitle={oneAuthWaiting ? "Waiting for phone approval…" : details.hasTotp ? "Copy current code" : details.oneAuthId ? "Send a push to your phone" : "No stored TOTP"} detail={preview} actions={actions("totp")} />
+        {details.url && <List.Item id="url" title="URL" subtitle={details.url} detail={preview} actions={actions("url")} />}
+      </>}
+      <List.Item id="back" title="Back to Search" detail={preview} actions={<ActionPanel>{back}<Action title="Lock Vault" onAction={lock} /></ActionPanel>} />
+      <List.Item id="lock" title="Lock Vault" icon={Icon.Lock} detail={preview} actions={<ActionPanel><Action title="Lock Vault" onAction={lock} />{back}</ActionPanel>} />
+    </List>;
+  }
+
+  const entries = session.entries.filter(entry => matchesEntry(entry, query));
+  return <List navigationTitle={`Zoho Vault · ${policyLabel}`} isLoading={busy} searchText={query} onSearchTextChange={setQuery} filtering={false} searchBarPlaceholder="Search name, URL or username…"
     actions={<ActionPanel><Action title="Lock Vault" icon={Icon.Lock} onAction={lock} />{settingsAction}</ActionPanel>}>
     <List.EmptyView title={query ? "No matching entries" : "No entries found"} description="Use the action panel to lock your vault." />
-    {entries.map(entry => <List.Item key={entry.id} title={entry.name} subtitle={entry.url}
-      icon={entry.personalKey ? "zoho-vault-icon.svg" : Icon.Lock} accessories={entry.hasTotp ? [{ text: "TOTP" }] : entry.supported ? [] : [{ text: "Open in Zoho" }]}
+    {entries.map(entry => <List.Item key={entry.id} title={entry.name} subtitle={[entry.username, entry.url].filter(Boolean).join(" · ")}
+      icon={entry.canRead ? "zoho-vault-icon.svg" : Icon.Lock} accessories={[...(entry.hasTotp ? [{ text: "Vault TOTP" }] : entry.oneAuthId ? [{ text: "OneAuth" }] : []), ...(entry.reason ? [{ text: entry.reason }] : [])]}
       actions={<ActionPanel>
-        {entry.supported && <>
-          <Action title="Copy Password" icon={Icon.CopyClipboard} onAction={() => copy(entry.id, "password")} />
+        <Action title="View Login Details" onAction={() => showDetails(entry.id)} />
+        {entry.canRead && <>
+          <Action title="Copy Password" icon={Icon.CopyClipboard} onAction={() => copy(entry.id, "password")} shortcut={{ modifiers: ["ctrl"], key: "p" }} />
           <Action title="Copy Username" onAction={() => copy(entry.id, "username")} shortcut={{ modifiers: ["ctrl"], key: "u" }} />
         </>}
-        {entry.personalKey && <Action title="Copy Verification Code" onAction={() => copy(entry.id, "totp")} shortcut={{ modifiers: ["ctrl"], key: "t" }} />}
+        {entry.canRead && <Action title={!entry.hasTotp && entry.oneAuthId ? "Request OneAuth Code" : "Copy Verification Code"} onAction={() => copy(entry.id, "totp")} shortcut={{ modifiers: ["ctrl"], key: "t" }} />}
         {entry.url && <Action.OpenInBrowser title="Open Website" url={entry.url} />}
         <Action.OpenInBrowser title="Open Zoho Vault" url={endpoints(session.region).vault + "/"} />
         <Action title="Lock Vault" icon={Icon.Lock} onAction={lock} shortcut={{ modifiers: ["ctrl"], key: "l" }} />
         {settingsAction}
       </ActionPanel>} />)}
+    {(!query.trim() || "lock vault".includes(query.trim().toLowerCase())) && <List.Item id="lock-vault" title="Lock Vault" icon={Icon.Lock} actions={<ActionPanel><Action title="Lock Vault" onAction={lock} />{settingsAction}</ActionPanel>} />}
   </List>;
 }

@@ -18,6 +18,7 @@ Use Node.js 22+ and `npm ci --ignore-scripts`.
 - `src/vault.ts`: API requests, parsing, sessions, token renewal and copy actions.
 - `src/crypto.ts`: Zoho field decryption and local encrypted credential envelope.
 - `src/totp.ts`: validated otpauth TOTP generation.
+- `src/oneauth.ts`: explicit, bounded and cancellable phone-approval requests.
 - `src/settings.ts`: region allowlist and lock timer choices.
 - `src/screen-lock.ts`: GNOME screen-lock monitoring through read-only gdbus.
 - `docs/SETUP.md`: complete user setup and troubleshooting instructions.
@@ -40,14 +41,28 @@ The form regression test exercises these semantics without live credentials.
 
 ## Behavior to preserve
 
-- Only `ZohoVault.secrets.READ,ZohoVault.user.READ` scopes are needed.
+- The base connection uses `ZohoVault.secrets.READ,ZohoVault.user.READ`. OneAuth
+  Accounts endpoint availability is experimental; do not guess additional scopes.
 - Codes from Self Client are short-lived and single-use; retrying after a code
   exchange may require a fresh code. Never hard-code a user's code or client secret.
 - Regions are allowlisted; default India. Existing encrypted connections retain
   their saved region. Changing region requires reconnecting.
-- Support PBKDF2_AES vaults and entries encrypted with the user's personal key.
-  Shared/org keys, legacy SHA256 login, linked OneAuth secrets, HOTP, passkeys,
-  editing and attachments are not implemented. Fail clearly for unsupported data.
+- Support PBKDF2_AES vaults, personal keys and organization keys (legacy CSV/hex
+  RSA-PKCS1-v1.5 and base64 PKCS#8 RSA-OAEP/SHA-256). Organization-key records need
+  not be shared to anyone. Respect view/copy levels and access-control checkout.
+  Legacy SHA256 login, HOTP, passkeys, editing and attachments remain unsupported.
+- Enter on a login opens a split details list, not a copy action. Open Website is
+  the first action row; Up/Down + Enter operates fields. Password previews stay
+  masked. Alt+Left returns to search. Unlock submits with plain Enter; selectable
+  Lock Vault rows also use Enter. Keep the returning unlock form description-free.
+- Search matches names, all returned URLs and usernames across words, locally and
+  case-insensitively. Decrypted index data is session-only; never index passwords.
+- Missing list fields must not become blanket unsupported labels. Re-fetch details
+  before copying. Keep specific status messages for unavailable keys/permissions.
+- OneAuth links use an explicit push-and-poll action (src/oneauth.ts), with the
+  user's own token. This browser-extension flow is not public API; live scope
+  availability is unconfirmed. Never copy third-party OAuth credentials or browser
+  cookies. Abort on lock/cancel/timeout; never copy after denial or a late result.
 - TOTP is an encrypted top-level `totp` field containing an otpauth URI. Support
   SHA1/SHA256/SHA512, 6–8 digits and configured periods; do not guess unknown formats.
 - Lock choices are elapsed time since unlock: 5/10/15/30 minutes, 1 hour, 1 day,
@@ -69,7 +84,9 @@ are ignored. Keep setup instructions current when changing visible behavior.
 Logo attribution is in `THIRD_PARTY_NOTICES.md`; Zoho artwork is excluded from MIT.
 
 Automated tests cover synthetic decryption vectors, RFC 6238 vectors, timers,
-region selection, token renewal, lock parsing and API failures. A read-only GNOME
+region selection, token renewal, lock parsing, form/details interactions,
+organization-key envelopes, username search, OneAuth approval/cancellation and API
+failures. A read-only GNOME
 monitor smoke check succeeded on the original development machine. The user's
 free India account confirmed API reads. These do not prove universal plan
 entitlement or successful end-to-end decryption/TOTP for every live account.

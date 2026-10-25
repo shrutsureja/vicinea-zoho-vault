@@ -13,7 +13,8 @@ Their use identifies the service; it does not imply affiliation or endorsement.
 ## Protocol research and dependencies
 
 Zoho's API guide, key-derivation example and official Firefox extension 6.10.1 were
-inspected to understand encrypted fields and TOTP URI formats. No Zoho JavaScript
+inspected to understand encrypted fields, organization-key formats and OneAuth
+request flows. No Zoho JavaScript
 implementation is bundled. TOTP was independently implemented from RFC 6238 and
 checked against its published test vectors.
 

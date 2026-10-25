@@ -1,14 +1,18 @@
 # Zoho Vault for Vicinae
 
-An unofficial Vicinae extension to search personal Zoho Vault entries and copy
+An unofficial Vicinae extension to search Zoho Vault entries and copy
 passwords, usernames, and time-based verification codes.
 
 <img src="assets/zoho-vault-logo.svg" alt="Zoho Vault" width="260">
 
 ## Features
 
-- Search entry names and websites; open websites from the launcher.
-- Copy passwords, usernames and TOTP without adding them to Vicinae history.
+- Search names, all returned website URLs and decrypted usernames locally.
+- Press Enter to view a login, then use arrow-key rows and a side preview.
+- Open the website first, or copy a username, password, TOTP or URL.
+- Copy without adding secrets to Vicinae history.
+- Generate Vault TOTP locally, or explicitly request a linked OneAuth code.
+- Unlock both personal-key and organization-key password records.
 - Lock after 5, 10, 15 or 30 minutes, 1 hour, 1 day, or choose no timer.
 - Optionally lock when your GNOME desktop locks.
 - Encrypt saved OAuth connection credentials with your master password.
@@ -38,10 +42,16 @@ client secret, code, and Vault master password in the extension's form.
 
 | Action | Shortcut |
 | --- | --- |
-| Copy password | Enter on a supported password entry |
+| Unlock | Enter on the master-password form |
+| View login details | Enter on a search result |
+| Run the selected details action | Enter; use ↑/↓ to select |
+| Open website | Ctrl+O inside details |
+| Copy password | Ctrl+P |
 | Copy username | Ctrl+U |
-| Copy verification code | Ctrl+T |
-| Lock immediately | Ctrl+L |
+| Copy Vault TOTP / request linked OneAuth code | Ctrl+T |
+| Copy URL | Ctrl+Y inside details |
+| Back to search | Alt+Left |
+| Lock immediately | Ctrl+L, or Enter on the Lock Vault row |
 | Change preferences | Action panel → Extension Settings |
 
 ## Lock behavior
@@ -57,19 +67,35 @@ may leave its view running. A one-day timer does not preserve unlock across rest
 
 ## Supported data and limitations
 
-Supports `PBKDF2_AES` login and entries using the user's personal key
-(`ISSHARED=NO`/`false`). Stored TOTP supports SHA1/SHA256/SHA512, 6–8 digits and periods
-of 1–300 seconds. The generator matches all 18 RFC 6238 test vectors. Device time
-must be accurate.
+Supports `PBKDF2_AES` login with personal and organization keys. Zoho may encrypt
+an entry with the organization key even if it is not shared with anyone. Legacy
+RSA-PKCS1-v1.5 and modern RSA-OAEP/SHA-256 organization-key envelopes are supported.
+View/copy permissions and access-control checkout restrictions are respected.
 
-Organization/shared keys, legacy SHA256 vault login, linked Zoho OneAuth secrets,
-HOTP, passkeys, attachments, browser autofill and editing are not implemented.
-Unsupported records can be opened in Zoho Vault. Unexpected API response or
-pagination formats fail explicitly. The pagination limit is 100 pages.
+Search decrypts usernames, encrypted names and URLs in memory after unlock. It
+never indexes passwords or TOTP seeds and never sends search queries to Zoho.
+Records whose list metadata is incomplete are fetched when opened or copied.
 
-One free-plan India account confirmed read access; this is not proof of entitlement
-for every account. Live account decryption and TOTP comparison still need an
-end-to-end check with the user's own credentials.
+Vault TOTP supports SHA1/SHA256/SHA512, 6–8 digits and periods of 1–300 seconds.
+The generator matches all 18 RFC 6238 test vectors. Device time must be accurate.
+For a linked OneAuth entry, **Request OneAuth Code** sends a push only when invoked,
+waits for phone approval, and copies the returned code. Local Vault TOTP takes
+precedence when both methods are configured. Requests can be cancelled and are
+aborted on lock. This flow follows the official browser extension's Accounts
+endpoints, which are outside the public Vault API contract; availability for a
+Self Client/read token needs a live account check. On permission rejection, use
+the official Vault browser extension. No browser cookies or Zoho-owned OAuth
+client credentials are used, and no additional scope names are guessed.
+
+Legacy SHA256 vault login, HOTP, passkeys, attachments, browser autofill and editing
+remain unimplemented. Unknown key formats and restricted entries show specific
+status messages. API response/pagination errors fail explicitly; the limit is
+100 pages. Organization-key availability depends on the account's approved key
+material and API permissions.
+
+One free-plan India account confirmed API reads and reached the login list. This
+is not proof of entitlement for every account. Automated checks use synthetic
+records; live password/TOTP/OneAuth verification still needs the user's own account.
 
 ## Development and sharing
 

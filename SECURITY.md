@@ -43,6 +43,20 @@ expiry if sooner, and on lock/unmount, only if the clipboard still matches the
 last copy. Cleanup is best effort: an exited runtime cannot run timers, other
 clipboard managers may ignore the flag, and clipboard read/clear is not atomic.
 
-Only read scopes are requested. Shared/organization keys, linked OneAuth secrets
-and legacy SHA256 login are unsupported. Changing the master password requires
-reconnecting. Local uninstall does not revoke tokens; revoke authorization in Zoho.
+The base connection requests only the two Vault read scopes. Organization keys
+are retrieved from the account, unwrapped locally, kept in memory and wiped on
+lock. No auto-approval or sharing writes are performed. Login-only sharing and
+unapproved checkout restrictions are enforced before indexing usernames or copying.
+Search queries are never sent to Zoho; names/usernames/URLs are indexed in memory
+only. Passwords and TOTP seeds are not part of that index.
+
+Linked OneAuth requests are explicit user actions and send a push to the user's
+primary phone. This uses browser-extension Accounts endpoints outside the public
+Vault API contract; the user's own token must authorize them. No Zoho app identity,
+browser cookies or extra guessed scopes are used. Polling is bounded, cancellable,
+and aborted on lock. A late approval cannot bypass the local locked-session check.
+Returned OneAuth codes have no documented expiry metadata; the UI does not invent
+an exact remaining validity. No code is copied on denial or a failed request.
+
+Legacy SHA256 login remains unsupported. Master-password changes require reconnecting.
+Local uninstall does not revoke tokens; revoke authorization in Zoho.

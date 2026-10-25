@@ -101,45 +101,85 @@ Open **Search Zoho Vault** and fill in:
 | Fresh Code | The new authorization code |
 | Master Password | Your **Vault master password**, which may differ from your Zoho account login password |
 
-Select **Connect and Unlock** through the primary action or action panel. The
+Press **Enter** to **Connect and Unlock** (or select it from the action panel). The
 extension exchanges the code for tokens, verifies your master password locally,
 loads entries, and saves an encrypted OAuth connection. Your master password is
-not sent to Zoho. Normal future unlocks need only the master password.
+not sent to Zoho. Normal future unlocks need only the master password; press Enter to submit.
 
 If an error occurs after the code exchange, create a fresh code before retrying.
 Unsupported entries remain listed with an action to open Zoho Vault.
 
-## 7. Search and copy
+## 7. Search, view details and copy
 
-- Search by entry name or website URL.
-- On a supported password entry, press **Enter** to copy its password.
-- Press **Ctrl+U** to copy its username.
-- Use **Open Website** to visit its HTTP/HTTPS URL.
-- Use **Open Zoho Vault** for unsupported records and operations.
-- Press **Ctrl+L** to lock immediately.
+1. Unlock by entering your master password and pressing **Enter**. The returning
+   unlock screen contains only that field; settings stay in the action panel.
+2. Search by login name, any returned URL, or username. Matching is case-insensitive;
+   multiple words can match across these fields. Search stays on your PC.
+3. Select a login and press **Enter** to load its latest details. This does not copy
+   a password or open a browser automatically.
+4. The left side has selectable action rows; the right side previews the login.
+   Passwords remain masked. Use **Up/Down** to select a row and **Enter** to run it.
+5. **Open Website** is the first row when a valid URL is available. It opens that
+   URL in your browser. Other rows copy username, password, verification code, or URL.
+6. **Alt+Left** returns to the search results. Select **Lock Vault** and press Enter,
+   or press **Ctrl+L**, to lock immediately.
 
-Passwords and usernames use concealed clipboard copies with a 30-second cleanup
-attempt while the command is running. See [SECURITY.md](../SECURITY.md) for limits.
+| Shortcut | Action |
+| --- | --- |
+| Ctrl+O | Open website from details |
+| Ctrl+U | Copy username |
+| Ctrl+P | Copy password |
+| Ctrl+T | Copy Vault TOTP or request linked OneAuth approval |
+| Ctrl+Y | Copy URL from details |
+| Alt+Left | Back to search |
+| Ctrl+L | Lock |
 
-## 8. Copy TOTP verification codes
+Personal and organization-key entries are supported. In Zoho, an organization-key
+record is not necessarily shared with anyone. Restricted entries still require
+Zoho's view/copy permission and any required checkout. Missing list fields are
+not proof that an entry is unsupported: the extension re-fetches details before
+copying. If the organization key cannot be retrieved, the status explains it.
 
-The TOTP seed must already be saved **inside the entry in Zoho Vault**. The
-extension does not enroll a website in two-factor authentication or create seeds.
+Decrypted search names/usernames/URLs remain only in unlocked session memory and
+are cleared from the active index on lock. Passwords and seeds are not indexed.
+Copies use concealed clipboard entries and best-effort cleanup while running;
+see [SECURITY.md](../SECURITY.md).
 
-1. Select an entry and choose **Copy Verification Code**, or press **Ctrl+T**.
-2. Paste the code into the website before it expires.
-3. The toast reports remaining validity. A copied code does not change when the
-   next period begins; copy again to get the next code.
-4. For your first live test, compare it with the code shown in Zoho Vault. Ensure
-   your computer's date/time is set automatically.
+## 8. Vault TOTP and linked OneAuth
 
-A `TOTP` label appears when the list response includes the encrypted TOTP field.
-Some lists omit it, so the action is available for all personal-key entries and
-checks their latest details when invoked.
+The details screen distinguishes **Vault TOTP** from **OneAuth**.
 
-Supported: encrypted `otpauth://totp` data with SHA1/SHA256/SHA512, 6–8 digits and
-1–300-second periods. Organization/shared keys and linked OneAuth secrets are not
-supported. A missing/unsupported secret shows an error rather than a guessed code.
+### Built-in Vault TOTP
+
+The seed must already be stored inside the entry. Select **Verification Code** and
+press Enter, or use **Ctrl+T**. The extension generates the current code locally and
+copies it. The toast reports remaining validity. A copied code does not update:
+copy again after the next time period begins. Compare the first live code with
+Vault and ensure automatic device time is enabled.
+
+Supported: encrypted otpauth TOTP with SHA1/SHA256/SHA512, 6–8 digits and 1–300-second
+periods. The extension does not enroll accounts or create new TOTP seeds.
+
+### Linked OneAuth
+
+For an entry linked to a OneAuth secret, select **Request OneAuth Code**, or press
+**Ctrl+T**. The extension attempts this flow only after your explicit action:
+
+1. Locate your primary OneAuth device using your own OAuth token.
+2. Send a push for the linked account.
+3. Show **Waiting for phone approval**. Approve it on your OneAuth phone app.
+4. Poll for the result and copy the returned code after approval. Use it immediately.
+
+Use **Cancel OneAuth Request** in the action panel to stop waiting. Requests also
+stop on vault lock, command closure or timeout. Denial never produces a copied
+code. When both a stored Vault seed and a OneAuth link exist, the stored seed takes
+precedence, matching the browser extension's choice.
+
+**Availability:** this uses the flow found in Zoho's official browser extension,
+not a documented public Vault API. Self Client/read-scope access is not yet verified
+live. If your token cannot perform the lookup or request, the extension explains
+that and you can use the official Vault browser extension. Do not paste browser
+cookies, reuse Zoho's client identity, or invent broader scopes to work around it.
 
 ## 9. Configure locking
 
@@ -172,9 +212,11 @@ unlock across restarts. Hiding the launcher may leave the command running.
 | Master password could not be verified | Check the Vault master password, keyboard layout and Caps Lock; replace a consumed setup code |
 | Saved connection fails after a master-password change | Use **Reconnect Account**, a new code, and the new master password |
 | PC-lock detection unavailable | Check GNOME and `gdbus`, or disable the setting and reopen the command |
-| No TOTP secret returned | Confirm it is stored in the entry and is not a linked OneAuth secret |
+| No verification method returned | Confirm a TOTP seed or OneAuth link is saved on the entry |
+| OneAuth not available to this OAuth client | Use the official Vault browser extension; these endpoints may not allow your Self Client token |
 | TOTP differs from Vault | Check automatic device time and custom algorithm/digits/period settings; never report the secret or URI |
-| Organization key / unsupported login | Use **Open Zoho Vault**; shared keys and legacy SHA256 login are not implemented |
+| Organization key unavailable | Check Vault sharing approval and API permissions; missing key material cannot be guessed |
+| Unsupported login algorithm | Legacy SHA256 login is not implemented; use the official Vault app |
 | Password list or permissions rejected | Verify current account API access and scopes; failure alone does not prove an upgrade is necessary |
 | Command missing after build | Check the build output path and reopen Vicinae if needed |
 

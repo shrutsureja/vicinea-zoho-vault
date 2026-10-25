@@ -18,6 +18,7 @@ Source map:
 - `src/vault.ts`: API calls, entry parsing, sessions and token renewal.
 - `src/crypto.ts`: Zoho decryption and local credential envelope.
 - `src/totp.ts`: TOTP URI validation and generation.
+- `src/oneauth.ts`: explicit push requests and bounded approval polling.
 - `src/screen-lock.ts`: GNOME lock monitoring.
 - `src/settings.ts`: region allowlist and timer choices.
 

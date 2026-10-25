@@ -1,7 +1,7 @@
 {
   "name": "zoho-vault-personal",
   "title": "Zoho Vault",
-  "description": "Search personal Zoho Vault logins and copy passwords or TOTP codes with configurable locking",
+  "description": "Search Zoho Vault logins by name, URL or username, view details, and copy passwords or verification codes",
   "categories": [
     "Productivity"
   ],
@@ -35,7 +35,7 @@
     "tsx": "^4.20.0",
     "typescript": "5.9.2"
   },
-  "version": "0.2.1",
+  "version": "0.3.0",
   "preferences": [
     {
       "name": "autoLock",
