@@ -1,0 +1,135 @@
+{
+  "name": "zoho-vault-personal",
+  "title": "Zoho Vault",
+  "description": "Search personal Zoho Vault logins and copy passwords or TOTP codes with configurable locking",
+  "categories": [
+    "Productivity"
+  ],
+  "license": "MIT",
+  "author": "shrutsureja",
+  "icon": "icon.svg",
+  "commands": [
+    {
+      "name": "search-vault",
+      "title": "Search Zoho Vault",
+      "description": "Unlock and search your personal vault",
+      "mode": "view"
+    }
+  ],
+  "scripts": {
+    "build": "vici build",
+    "dev": "vici develop",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "build:package": "vici build --out dist",
+    "check": "npm run typecheck && npm test && npm run build:package"
+  },
+  "dependencies": {
+    "@vicinae/api": "0.29.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "5.9.2"
+  },
+  "version": "0.2.0",
+  "preferences": [
+    {
+      "name": "autoLock",
+      "title": "Automatic lock timer",
+      "description": "Maximum time since unlock, not inactivity. Applies on the next unlock. Closing the command or restarting Vicinae always locks.",
+      "type": "dropdown",
+      "required": false,
+      "default": "5",
+      "data": [
+        {
+          "title": "After 5 minutes",
+          "value": "5"
+        },
+        {
+          "title": "After 10 minutes",
+          "value": "10"
+        },
+        {
+          "title": "After 15 minutes",
+          "value": "15"
+        },
+        {
+          "title": "After 30 minutes",
+          "value": "30"
+        },
+        {
+          "title": "After 1 hour",
+          "value": "60"
+        },
+        {
+          "title": "After 1 day (24 hours)",
+          "value": "1440"
+        },
+        {
+          "title": "No timer",
+          "value": "never"
+        }
+      ]
+    },
+    {
+      "name": "lockOnPcLock",
+      "title": "Lock on PC lock",
+      "description": "Lock when GNOME locks the screen. Requires Linux GNOME and gdbus; fails closed if detection becomes unavailable. Applies on the next unlock.",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Lock the vault when my PC locks"
+    },
+    {
+      "name": "region",
+      "title": "Zoho data center",
+      "description": "Choose the region matching your Vault URL. Used for new connections; reconnect to change an existing account.",
+      "type": "dropdown",
+      "required": false,
+      "default": "in",
+      "data": [
+        {
+          "title": "India (.in)",
+          "value": "in"
+        },
+        {
+          "title": "United States (.com)",
+          "value": "us"
+        },
+        {
+          "title": "Europe (.eu)",
+          "value": "eu"
+        },
+        {
+          "title": "Australia (.com.au)",
+          "value": "au"
+        },
+        {
+          "title": "Canada (.zohocloud.ca)",
+          "value": "ca"
+        },
+        {
+          "title": "Japan (.jp)",
+          "value": "jp"
+        },
+        {
+          "title": "Saudi Arabia (.sa)",
+          "value": "sa"
+        },
+        {
+          "title": "China (.cn)",
+          "value": "cn"
+        }
+      ]
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shrutsureja/vicinea-zoho-vault.git"
+  },
+  "homepage": "https://github.com/shrutsureja/vicinea-zoho-vault#readme",
+  "bugs": {
+    "url": "https://github.com/shrutsureja/vicinea-zoho-vault/issues"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.env*
+.DS_Store
+coverage/
+*.zip
+*.pem
+*.key
+connection*.json
+credentials*.json
+vicinae-env.d.ts
