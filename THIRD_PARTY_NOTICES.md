@@ -5,7 +5,7 @@
 `assets/zoho-vault-logo.svg` comes from the user-supplied official URL:
 https://www.zohowebstatic.com/sites/zweb/images/productlogos/vault.svg
 
-`assets/icon.svg` uses its safe symbol with the wordmark removed and a square
+`assets/zoho-vault-icon.svg` uses its safe symbol with the wordmark removed and a square
 viewBox. The symbol's paths and colors are preserved. Zoho artwork and marks remain
 Zoho Corporation's property and are excluded from this project's MIT license.
 Their use identifies the service; it does not imply affiliation or endorsement.

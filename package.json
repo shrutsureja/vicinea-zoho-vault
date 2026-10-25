@@ -7,7 +7,7 @@
   ],
   "license": "MIT",
   "author": "shrutsureja",
-  "icon": "icon.svg",
+  "icon": "zoho-vault-icon.svg",
   "commands": [
     {
       "name": "search-vault",
@@ -29,10 +29,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/react-test-renderer": "19.1.0",
+    "esbuild": "0.25.12",
+    "react-test-renderer": "19.1.1",
     "tsx": "^4.20.0",
     "typescript": "5.9.2"
   },
-  "version": "0.2.0",
+  "version": "0.2.1",
   "preferences": [
     {
       "name": "autoLock",

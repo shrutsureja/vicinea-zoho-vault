@@ -150,11 +150,12 @@ export default function Command() {
       <Form.Description text={setup ? `Data center: ${endpoints(configured.region).vault}. Generate a NEW Self Client code with scopes ZohoVault.secrets.READ,ZohoVault.user.READ.` : "Enter your Zoho Vault master password to unlock."} />
       <Form.Description title="Lock settings" text={`${lockLabel(configured.autoLock)}${configured.lockOnPcLock ? "; also on PC lock (GNOME)" : ""}. Closing the command always locks. Change these in Extension Settings; they apply on your next unlock.`} />
       {setup && <>
-        <Form.PasswordField id="clientId" title="Client ID" storeValue={false} />
-        <Form.PasswordField id="clientSecret" title="Client Secret" storeValue={false} />
-        <Form.PasswordField id="code" title="Fresh Code" storeValue={false} />
+        {/* storeValue controls submission, not disk persistence. Drafts stay disabled on Form. */}
+        <Form.PasswordField id="clientId" title="Client ID" onChange={() => setError("")} />
+        <Form.PasswordField id="clientSecret" title="Client Secret" onChange={() => setError("")} />
+        <Form.PasswordField id="code" title="Fresh Code" onChange={() => setError("")} />
       </>}
-      <Form.PasswordField id="master" title="Master Password" storeValue={false} error={error || undefined} />
+      <Form.PasswordField id="master" title="Master Password" onChange={() => setError("")} error={error || undefined} />
       <Form.Description text="Your master password stays local. Saved connection credentials are encrypted with it. Supports PBKDF2_AES personal-key entries and stored TOTP; organization keys, linked OneAuth secrets and passkeys are not supported." />
     </Form>;
   }
@@ -164,7 +165,7 @@ export default function Command() {
     actions={<ActionPanel><Action title="Lock Vault" icon={Icon.Lock} onAction={lock} />{settingsAction}</ActionPanel>}>
     <List.EmptyView title={query ? "No matching entries" : "No entries found"} description="Use the action panel to lock your vault." />
     {entries.map(entry => <List.Item key={entry.id} title={entry.name} subtitle={entry.url}
-      icon={entry.personalKey ? "icon.svg" : Icon.Lock} accessories={entry.hasTotp ? [{ text: "TOTP" }] : entry.supported ? [] : [{ text: "Open in Zoho" }]}
+      icon={entry.personalKey ? "zoho-vault-icon.svg" : Icon.Lock} accessories={entry.hasTotp ? [{ text: "TOTP" }] : entry.supported ? [] : [{ text: "Open in Zoho" }]}
       actions={<ActionPanel>
         {entry.supported && <>
           <Action title="Copy Password" icon={Icon.CopyClipboard} onAction={() => copy(entry.id, "password")} />

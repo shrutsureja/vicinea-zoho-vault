@@ -17,7 +17,8 @@ Vault fields arrive encrypted and are decrypted locally. Requests go only to the
 allowlisted Accounts and Vault hosts for the selected data center. Redirects are
 refused. No remote favicons or telemetry are used. Opening a website is explicit
 and sends no credentials. Raw server error bodies are not displayed or logged.
-Form drafts and saved field values are disabled.
+Form drafts are disabled. Required field values are included in the in-memory
+submit payload; Vicinae's `storeValue` flag controls this inclusion, not disk storage.
 
 Field decryption follows Zoho's published legacy AES-CTR format, without its own
 authentication tag. The master key is verified against Zoho's encrypted JSON login
