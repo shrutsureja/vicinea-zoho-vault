@@ -8,9 +8,9 @@ passwords, usernames, and time-based verification codes.
 ## Features
 
 - Search names, all returned website URLs and decrypted usernames locally.
-- Show the installed version and loaded/matching entry counts in the footer.
-- Press Enter to view a login, then use arrow-key rows and a side preview.
-- Open the website first, or copy a username, password, TOTP or URL.
+- Show loaded/matching entry counts and time until the vault locks in the footer.
+- Press Enter on a result to copy its password; details show in a side pane.
+- Copy a username, password, TOTP or URL, or open the website, from one action panel.
 - Copy without adding secrets to Vicinae history.
 - Generate Vault TOTP locally, or explicitly request a linked OneAuth code.
 - Unlock both personal-key and organization-key password records.
@@ -44,14 +44,14 @@ client secret, code, and Vault master password in the extension's form.
 | Action | Shortcut |
 | --- | --- |
 | Unlock | Enter on the master-password form |
-| View login details | Enter on a search result |
-| Run the selected details action | Enter; use ↑/↓ to select |
-| Open website | Ctrl+O inside details |
-| Copy password | Ctrl+P |
-| Copy username | Ctrl+U |
+| Copy password | Enter (or Ctrl+P) on a search result |
+| Copy username | Shift+Enter (or Ctrl+U) |
 | Copy Vault TOTP / request linked OneAuth code | Ctrl+T |
-| Copy URL | Ctrl+Y inside details |
-| Back to search | Alt+Left |
+| Copy URL | Ctrl+Y |
+| Open website | Ctrl+O |
+| Open Zoho Vault | Ctrl+Shift+O |
+| Show / hide the details pane | Ctrl+D |
+| All actions | Ctrl+B |
 | Lock immediately | Ctrl+L, or Enter on the Lock Vault row |
 | Change preferences | Action panel → Extension Settings |
 
