@@ -132,6 +132,8 @@ export class VaultSession {
     this.entries = entries.map(entry => this.indexEntry(entry));
   }
   isOpen() { return !this.closed && Date.now() < this.deadline; }
+  /** Epoch ms when the timer locks this session; Infinity when no timer is set. */
+  lockAt() { return this.deadline; }
   lock() {
     this.closed = true; this.token = ""; this.renewToken = undefined;
     this.key.fill(0); this.orgKey?.fill(0); this.orgKey = undefined;

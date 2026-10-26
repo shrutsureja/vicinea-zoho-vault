@@ -112,28 +112,31 @@ Unsupported entries remain listed with an action to open Zoho Vault.
 ## 7. Search, view details and copy
 
 1. Unlock by entering your master password and pressing **Enter**. The returning
-   unlock screen contains only that field; settings stay in the action panel.
-2. Check the footer for the installed version and loaded-entry count. Clear the
+   unlock screen contains only that field; the footer shows your data center and
+   lock policy, and settings stay in the action panel.
+2. The footer shows the loaded-entry count and when the vault will lock. Clear the
    search to see all loaded entries; with a query the count shows matches/loaded.
    Search by login name, any returned URL, or username. Matching is case-insensitive;
    multiple words can match across these fields. Search stays on your PC.
-3. Select a login and press **Enter** to load its latest details. This does not copy
-   a password or open a browser automatically.
-4. The left side has selectable action rows; the right side previews the login.
-   Passwords remain masked. Use **Up/Down** to select a row and **Enter** to run it.
-5. **Open Website** is the first row when a valid URL is available. It opens that
-   URL in your browser. Other rows copy username, password, verification code, or URL.
-6. **Alt+Left** returns to the search results. Select **Lock Vault** and press Enter,
-   or press **Ctrl+L**, to lock immediately.
+3. The selected login's details show in a pane on the right: username, a masked
+   password, verification-code type, website and key type. **Ctrl+D** hides or
+   shows the pane.
+4. Press **Enter** to copy the password and **Shift+Enter** to copy the username.
+   Every copy fetches the latest value from Zoho first. Press **Ctrl+B** for all
+   actions, grouped into Copy, Open and Vault.
+5. **Ctrl+T** copies the Vault TOTP, or sends a OneAuth push for linked entries.
+   While waiting, the row and details show the pending request; **Ctrl+X** cancels it.
+6. Select **Lock Vault** and press Enter, or press **Ctrl+L**, to lock immediately.
 
 | Shortcut | Action |
 | --- | --- |
-| Ctrl+O | Open website from details |
-| Ctrl+U | Copy username |
-| Ctrl+P | Copy password |
+| Enter / Ctrl+P | Copy password |
+| Shift+Enter / Ctrl+U | Copy username |
 | Ctrl+T | Copy Vault TOTP or request linked OneAuth approval |
-| Ctrl+Y | Copy URL from details |
-| Alt+Left | Back to search |
+| Ctrl+Y | Copy URL |
+| Ctrl+O | Open website |
+| Ctrl+Shift+O | Open Zoho Vault |
+| Ctrl+D | Show or hide the details pane |
 | Ctrl+L | Lock |
 
 Personal and organization-key entries are supported. In Zoho, an organization-key
