@@ -71,6 +71,9 @@ The form regression test exercises these semantics without live credentials.
   cookies. Abort on lock/cancel/timeout; never copy after denial or a late result.
 - TOTP is an encrypted top-level `totp` field containing an otpauth URI. Support
   SHA1/SHA256/SHA512, 6–8 digits and configured periods; do not guess unknown formats.
+  Zoho's encrypted empty value is a 12-character base64 nonce, not a stored seed.
+  Exclude it from hasTotp so linked OneAuth remains available. Inline details avoid
+  a second list where the search query could hide field actions.
 - Lock choices are elapsed time since unlock: 5/10/15/30 minutes, 1 hour, 1 day,
   or no timer. PC-lock detection is separate and currently GNOME-only. Monitoring
   failures lock the vault when enabled. Closing the command/runtime always locks.

@@ -72,6 +72,9 @@ export function parseEntry(value: unknown, userId = ""): Entry {
   const keyType = ["YES", "TRUE"].includes(shared) ? "organization" : ["NO", "FALSE"].includes(shared) ? "personal" : "unknown";
   const totp = row.totp ?? row.TOTP;
   if (typeof totp === "string" && totp && totp !== "null") encrypted.totp = totp;
+  // Zoho encrypts an empty value as an eight-byte nonce (12 base64 chars).
+  // Match the official client: this is not a stored seed and must not mask OneAuth.
+  if (encrypted.totp === "null" || (encrypted.totp?.length ?? 0) <= 12) delete encrypted.totp;
   const levelValue = read("sharinglevel", "SHARINGLEVEL"), level = Number(levelValue);
   const owned = !!userId && String(read("userid", "USERID")) === userId;
   const sharedToMe = String(read("sharingtype", "SHARINGTYPE")).toUpperCase() === "SHARED_TO_ME";
