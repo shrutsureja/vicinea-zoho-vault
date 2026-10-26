@@ -106,6 +106,13 @@ extension exchanges the code for tokens, verifies your master password locally,
 loads entries, and saves an encrypted OAuth connection. Your master password is
 not sent to Zoho. Normal future unlocks need only the master password; press Enter to submit.
 
+> **Note:** Fields are not saved as drafts. If the Vicinae window closes while you
+> fetch the code from Zoho (for example when you click your browser) and reopening
+> shows the home search, turn off **Pop to root on close** (`pop_to_root_on_close`)
+> in the **Vicinae** settings page, and optionally **Close on focus loss**. Vicinae
+> then keeps the form open with what you typed. Otherwise, generate the Fresh Code
+> first, then open the extension and fill in all fields at once.
+
 If an error occurs after the code exchange, create a fresh code before retrying.
 Unsupported entries remain listed with an action to open Zoho Vault.
 
@@ -218,6 +225,7 @@ unlock across restarts. Hiding the launcher may leave the command running.
 | Wrong scopes | Use the two exact read scopes above |
 | Master password could not be verified | Check the Vault master password, keyboard layout and Caps Lock; replace a consumed setup code |
 | Saved connection fails after a master-password change | Use **Reconnect Account**, a new code, and the new master password |
+| Form disappears and reopens at home search | Turn off **Pop to root on close** in the Vicinae settings (see step 6) |
 | PC-lock detection unavailable | Check GNOME and `gdbus`, or disable the setting and reopen the command |
 | No verification method returned | Confirm a TOTP seed or OneAuth link is saved on the entry |
 | OneAuth not available to this OAuth client | Use the official Vault browser extension; these endpoints may not allow your Self Client token |
