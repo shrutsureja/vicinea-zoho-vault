@@ -154,6 +154,8 @@ test("Enter opens details without copying; field rows open/copy explicitly and l
     await act(async () => { await entry.findAllByType("native-action")[0].props.onAction(); });
     assert.equal(bridge.__vaultCopied, undefined);
     assert.equal(renderer.root.findByType("native-list").props.isShowingDetail, true);
+    assert.equal(renderer.root.findByType("native-list").props.filtering, false);
+    assert.equal(renderer.root.findByType("native-list").props.searchText, "");
     const rows = renderer.root.findAllByType("native-item");
     assert.deepEqual(rows.map(row => row.props.id), ["open", "username", "password", "totp", "url", "back", "lock"]);
     assert.equal(rows[0].findAllByType("native-action")[0].props.title, "Open Website");

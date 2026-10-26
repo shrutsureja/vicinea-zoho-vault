@@ -41,6 +41,29 @@ test("TOTP rejects unsupported or ambiguous configurations without exposing secr
   }
 });
 
+test("encrypted empty TOTP does not hide OneAuth or trigger local code parsing", async () => {
+  const original = globalThis.fetch;
+  const row = { secretid: "123", isshared: "NO", secretData: "{}", totp: "AAECAwQFBgc=", oneauth_id: "synthetic-link" };
+  for (const totp of ["", "null", row.totp]) {
+    const entry = parseEntry({ ...row, totp });
+    assert.equal(entry.hasTotp, false);
+    assert.equal(entry.oneAuthId, "synthetic-link");
+  }
+  const session = new VaultSession("synthetic", fieldKey("synthetic"), [parseEntry(row)]);
+  let lookup = false;
+  globalThis.fetch = async url => {
+    if (String(url).includes("accounts.zoho.in/signin/v2/lookup/self")) {
+      lookup = true;
+      return new Response("{}", { status: 403 });
+    }
+    return new Response(JSON.stringify({ operation: { result: { status: "Success" }, Details: [row] } }));
+  };
+  try {
+    await assert.rejects(session.copyTotp("123"), /OAuth client/);
+    assert.equal(lookup, true);
+  } finally { session.lock(); globalThis.fetch = original; }
+});
+
 test("every timer expires at its chosen duration; no timer lasts until manual lock", () => {
   const original = Date.now; let now = 1_000_000; Date.now = () => now;
   try {
