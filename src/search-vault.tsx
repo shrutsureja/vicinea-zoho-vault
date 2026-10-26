@@ -195,7 +195,7 @@ export default function Command() {
       <List.Item.Detail.Metadata.Label title="Verification code" text={oneAuthWaiting ? "Approve the request in OneAuth…" : details.hasTotp ? "Vault TOTP · Ctrl+T to copy" : details.oneAuthId ? "OneAuth · Ctrl+T to request approval" : "Not stored in this entry"} />
       {details.reason && <List.Item.Detail.Metadata.Label title="Status" text={details.reason} />}
     </List.Item.Detail.Metadata>} />;
-    return <List navigationTitle={details.name} isLoading={busy} isShowingDetail filtering={false} searchText="" searchBarPlaceholder="↑/↓ choose · Enter run · Alt+← back" actions={actions(details.url ? "open" : "username")}>
+    return <List navigationTitle={details.name} isLoading={busy} isShowingDetail searchBarPlaceholder="↑/↓ choose · Enter run · Alt+← back" actions={actions(details.url ? "open" : "username")}>
       {details.url && <List.Item id="open" title="Open Website" subtitle={details.url} detail={preview} actions={actions("open")} />}
       {details.canRead && <>
         <List.Item id="username" title="Username" subtitle={details.username || "Copy from login"} detail={preview} actions={actions("username")} />

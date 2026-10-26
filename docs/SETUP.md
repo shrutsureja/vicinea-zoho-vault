@@ -150,8 +150,6 @@ see [SECURITY.md](../SECURITY.md).
 ## 8. Vault TOTP and linked OneAuth
 
 The details screen distinguishes **Vault TOTP** from **OneAuth**.
-Encrypted empty TOTP fields are ignored when choosing the verification method;
-an entry with a OneAuth link then shows **Request OneAuth Code**.
 
 ### Built-in Vault TOTP
 
