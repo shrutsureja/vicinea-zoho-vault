@@ -18,9 +18,10 @@ const hash = (value: string) => createHash("sha256").update(value).digest("hex")
 
 type CopyField = "password" | "username" | "totp" | "url";
 
-function twoFactorLabel(entry: Entry, waiting: boolean): string {
+function twoFactorLabel(entry: Entry, waiting: boolean, oneAuthBlocked: boolean): string {
   if (waiting) return "Approve the request in OneAuth…";
   if (entry.hasTotp) return "Vault TOTP · Ctrl+T to copy";
+  if (entry.oneAuthId && oneAuthBlocked) return "OneAuth · not allowed for this token; use the Zoho Vault browser extension";
   if (entry.oneAuthId) return "OneAuth · Ctrl+T sends a push";
   return "Not stored in this entry";
 }
@@ -35,6 +36,7 @@ export default function Command() {
   const [waitingFor, setWaitingFor] = useState("");
   const [reconnect, setReconnect] = useState(false);
   const [formId, setFormId] = useState(0);
+  const [oneAuthBlocked, setOneAuthBlocked] = useState(false);
   const [remaining, setRemaining] = useState("");
   const live = useRef(true);
   const current = useRef<VaultSession | null>(null);
@@ -140,6 +142,7 @@ export default function Command() {
         try { if (await readScreenLocked()) { lock(); throw new Error("PC is locked."); } }
         catch (err) { lock(); throw err; }
       }
+      if (field === "totp" && oneAuthBlocked && !session?.entries.find(e => e.id === id)?.hasTotp) throw new Error("OneAuth is not allowed for this token. Use the Zoho Vault browser extension for this code.");
       const otp = field === "totp" ? await active.copyTotp(id, () => { if (live.current) setWaitingFor(id); }) : undefined;
       const value = otp ? otp.code : await active.copyValue(id, field as "password" | "username" | "url");
       if (!live.current || current.current !== active || !active.isOpen() || generation !== copyGeneration.current) return;
@@ -156,6 +159,7 @@ export default function Command() {
         : `Clipboard clears in ${Math.ceil(clearMs / 1000)}s while this command is open.`;
       await showToast({ style: Toast.Style.Success, title, message });
     } catch (err) {
+      if (live.current && field === "totp" && err instanceof Error && /not available to this OAuth client/.test(err.message)) setOneAuthBlocked(true);
       if (live.current) await showToast({ style: Toast.Style.Failure, title: "Could not copy", message: err instanceof Error ? err.message : "Unlock and try again." });
     } finally { working.current = false; if (live.current) { setBusy(false); setWaitingFor(""); } }
   }
@@ -222,7 +226,7 @@ export default function Command() {
       <List.Item.Detail.Metadata.Separator />
       {entry.username && <List.Item.Detail.Metadata.Label title="Username" text={entry.username} />}
       {entry.canRead && <List.Item.Detail.Metadata.Label title="Password" text="••••••••" />}
-      <List.Item.Detail.Metadata.Label title="Verification code" text={twoFactorLabel(entry, waitingFor === entry.id)} />
+      <List.Item.Detail.Metadata.Label title="Verification code" text={twoFactorLabel(entry, waitingFor === entry.id, oneAuthBlocked)} />
       {entry.url && <List.Item.Detail.Metadata.Label title="Website" text={entry.url} />}
       <List.Item.Detail.Metadata.Separator />
       <List.Item.Detail.Metadata.Label title="Vault" text={entry.keyType === "organization" ? "Organization key" : entry.keyType === "personal" ? "Personal" : "Unknown key"} />

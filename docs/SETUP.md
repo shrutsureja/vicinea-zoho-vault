@@ -189,6 +189,13 @@ stop on vault lock, command closure or timeout. Denial never produces a copied
 code. When both a stored Vault seed and a OneAuth link exist, the stored seed takes
 precedence, matching the browser extension's choice.
 
+**Known result (HTTP 401):** with a Self Client token the OneAuth device lookup is
+rejected with HTTP 401, and Zoho publishes no developer API or OAuth scope for
+OneAuth push. After the first rejection the extension stops retrying for that
+session and the detail pane says OneAuth is not allowed for this token. Use the
+official Vault browser extension for those codes, or store a real TOTP seed on
+entries you own (Ctrl+T then works offline).
+
 **Availability:** this uses the flow found in Zoho's official browser extension,
 not a documented public Vault API. Self Client/read-scope access is not yet verified
 live. If your token cannot perform the lookup or request, the extension explains
