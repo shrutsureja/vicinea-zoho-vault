@@ -11,7 +11,7 @@
   "commands": [
     {
       "name": "search-vault",
-      "title": "Search Zoho Vault",
+      "title": "Search Logins",
       "description": "Unlock and search your personal vault",
       "mode": "view"
     }

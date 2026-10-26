@@ -27,7 +27,7 @@ npm run build
 ```
 
 The final message should report a successful build and name Vicinae's extension
-directory. Start Vicinae and search **Search Zoho Vault**. You do not need to copy
+directory. Start Vicinae and search **Search Logins**. You do not need to copy
 the source or `node_modules` into Vicinae.
 
 ## 3. Select your region and lock settings
@@ -92,7 +92,7 @@ The client ID and secret can be reused; the code cannot.
 
 ## 6. Connect and unlock
 
-Open **Search Zoho Vault** and fill in:
+Open **Search Logins** and fill in:
 
 | Field | What to enter |
 | --- | --- |

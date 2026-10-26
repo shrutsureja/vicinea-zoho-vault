@@ -37,7 +37,7 @@ npm ci --ignore-scripts
 npm run build
 ```
 
-Open **Search Zoho Vault** in Vicinae. Create a fresh Self Client authorization code
+Open **Search Logins** in Vicinae. Create a fresh Self Client authorization code
 with scopes `ZohoVault.secrets.READ,ZohoVault.user.READ`, then enter the client ID,
 client secret, code, and Vault master password in the extension's form.
 

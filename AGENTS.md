@@ -2,7 +2,7 @@
 
 This repository is an unofficial Zoho Vault extension for Vicinae, published at
 https://github.com/shrutsureja/vicinea-zoho-vault. The package ID is
-`zoho-vault-personal`; the visible command is **Search Zoho Vault**. Keep that ID
+`zoho-vault-personal`; the visible command is **Search Logins**. Keep that ID
 stable so upgrades preserve existing connection storage. The maintainer is
 `shrutsureja`. The user requested the official Zoho Vault safe icon, configurable
 locking, TOTP access, and a complete setup guide for other users.
