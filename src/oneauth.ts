@@ -31,7 +31,13 @@ export async function requestOneAuthCode(input: {
       const headers: Record<string, string> = { Authorization: "Zoho-oauthtoken " + token, "Content-Type": "application/json" };
       if (pushToken) headers["Z-authorization"] = "Zoho-oauthtoken " + pushToken;
       const response = await fetch(endpoints(region).accounts + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: requestSignal, redirect: "error" });
-      if (!response.ok) throw new Error("OneAuth request is not available to this OAuth client. Use the official Vault browser extension.");
+      if (!response.ok) {
+        // Only a short alphanumeric Zoho error code is surfaced; bodies may hold other data.
+        const body = await response.json().catch(() => undefined) as Record<string, any> | undefined;
+        const raw = body?.errors?.[0]?.code ?? body?.error ?? body?.code;
+        const code = typeof raw === "string" && /^[A-Za-z0-9_ -]{1,40}$/.test(raw) ? `, ${raw}` : "";
+        throw new Error(`OneAuth request is not available to this OAuth client (HTTP ${response.status}${code}). Use the official Vault browser extension.`);
+      }
       const result = object(await response.json());
       check();
       if (requestSignal.aborted) throw new Error("OneAuth request cancelled or timed out.");
