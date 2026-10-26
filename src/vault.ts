@@ -135,6 +135,8 @@ export class VaultSession {
     this.entries = entries.map(entry => this.indexEntry(entry));
   }
   isOpen() { return !this.closed && Date.now() < this.deadline; }
+  /** Hex copy of the field key, only for the keyring cache that survives Vicinae unloading. */
+  snapshotKey() { return this.key.toString("hex"); }
   /** Epoch ms when the timer locks this session; Infinity when no timer is set. */
   lockAt() { return this.deadline; }
   lock() {
@@ -224,10 +226,10 @@ export class VaultSession {
   }
 }
 
-export async function loadSession(token: string, password: string, options: SessionOptions = {}): Promise<VaultSession> {
+export async function loadSession(token: string, password: string | Buffer, options: SessionOptions = {}): Promise<VaultSession> {
   const login = await vaultGet("/api/json/login?OPERATION_NAME=GET_LOGIN", token, options.region);
   const metadata = object(login.details ?? login.Details);
-  const key = await unlockKey(password, metadata);
+  const key = typeof password === "string" ? await unlockKey(password, metadata) : Buffer.from(password);
   let orgKey: Buffer | undefined;
   try {
     const user = metadata.USER && typeof metadata.USER === "object" ? object(metadata.USER) : {};

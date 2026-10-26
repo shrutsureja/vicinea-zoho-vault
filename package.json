@@ -85,6 +85,15 @@
       "label": "Lock the vault when my PC locks"
     },
     {
+      "name": "keepUnlocked",
+      "title": "Stay unlocked after closing",
+      "description": "Vicinae unloads the command whenever its window hides. Keep the unlock in the desktop keyring (needs secret-tool) until the timer ends or the PC locks. Applies on the next unlock.",
+      "type": "checkbox",
+      "required": false,
+      "default": true,
+      "label": "Keep the vault unlocked while the timer runs"
+    },
+    {
       "name": "region",
       "title": "Zoho data center",
       "description": "Choose the region matching your Vault URL. Used for new connections; reconnect to change an existing account.",

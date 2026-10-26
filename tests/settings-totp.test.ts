@@ -127,3 +127,13 @@ test("day-long session refreshes tokens and a pending renewal cannot reopen a lo
     await assert.rejects(copying, /locked/); assert.ok(!pending.isOpen());
   } finally { session.lock(); globalThis.fetch = originalFetch; Date.now = originalNow; }
 });
+
+test("keyring cache accepts only a complete, unexpired session", async () => {
+  const { parseCached } = await import("../src/keyring");
+  const good = { v: 1, key: "a".repeat(64), credentials: { clientId: "id", clientSecret: "secret", refreshToken: "refresh" }, deadline: 2_000 };
+  assert.ok(parseCached(JSON.stringify(good), 1_000));
+  assert.equal(parseCached(JSON.stringify(good), 2_000), undefined);
+  assert.equal(parseCached(JSON.stringify({ ...good, key: "zz" }), 1_000), undefined);
+  assert.equal(parseCached(JSON.stringify({ ...good, credentials: { clientId: "id" } }), 1_000), undefined);
+  assert.equal(parseCached("not json", 1_000), undefined);
+});

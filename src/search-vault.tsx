@@ -1,7 +1,8 @@
 import { Action, ActionPanel, Clipboard, Color, Form, Icon, List, LocalStorage, Toast, getPreferenceValues, openExtensionPreferences, open, showToast } from "@vicinae/api";
 import { createHash } from "node:crypto";
 import { useEffect, useRef, useState } from "react";
-import { openCredentials, sealCredentials } from "./crypto";
+import { Credentials, openCredentials, sealCredentials } from "./crypto";
+import { clearCached, loadCached, storeCached } from "./keyring";
 import { Entry, VaultSession, loadSession, matchesEntry, refresh, tokenRequest } from "./vault";
 import { REGIONS, endpoints, lockDuration, lockLabel, region } from "./settings";
 import { readScreenLocked, watchScreenLock } from "./screen-lock";
@@ -9,8 +10,8 @@ import { version } from "../package.json";
 import { displayName, hostOf, remainingLabel, tintFor } from "./display";
 
 function preferences() {
-  const p = getPreferenceValues<{ autoLock?: string; lockOnPcLock?: boolean; region?: string }>();
-  return { autoLock: p.autoLock ?? "5", lockOnPcLock: p.lockOnPcLock ?? true, region: region(p.region ?? "in") };
+  const p = getPreferenceValues<{ autoLock?: string; lockOnPcLock?: boolean; region?: string; keepUnlocked?: boolean }>();
+  return { autoLock: p.autoLock ?? "5", lockOnPcLock: p.lockOnPcLock ?? true, keepUnlocked: p.keepUnlocked ?? true, region: region(p.region ?? "in") };
 }
 
 const CONNECTION = "india-connection-v1";
@@ -57,17 +58,45 @@ export default function Command() {
     } catch { /* Runtime may be stopping; cleanup is best effort. */ }
   }
 
-  function lock() {
+  // Unmount only wipes memory (keepCache); every real lock also drops the keyring copy.
+  function lock(keepCache = false) {
+    if (!keepCache) void clearCached();
     copyGeneration.current++;
     current.current?.lock(); current.current = null;
     void clearOwnedClipboard();
     if (live.current) { setSession(null); setWaitingFor(""); setQuery(""); setFormId(x => x + 1); }
   }
 
+  // Vicinae reloads the command after every window hide; rebuild the session from the keyring cache.
+  async function restore() {
+    const p = preferences();
+    if (!p.keepUnlocked) { await clearCached(); return; }
+    const cached = await loadCached();
+    if (!cached || !live.current) return;
+    setBusy(true);
+    let opened: VaultSession | undefined;
+    try {
+      if (p.lockOnPcLock && await readScreenLocked()) throw new Error("PC locked");
+      const credentials = cached.credentials;
+      const token = await refresh(credentials);
+      opened = await loadSession(token, Buffer.from(cached.key, "hex"), { durationMs: cached.deadline - Date.now(), region: credentials.region ?? "in", renewToken: () => refresh(credentials) });
+      if (p.lockOnPcLock && await readScreenLocked()) throw new Error("PC locked");
+      if (!live.current) { opened.lock(); return; }
+      current.current?.lock(); current.current = opened;
+      pcLockEnabled.current = p.lockOnPcLock;
+      setRemaining(remainingLabel(opened.lockAt()));
+      setSession(opened); setFormId(x => x + 1);
+    } catch {
+      opened?.lock();
+      await clearCached();
+    } finally { if (live.current) setBusy(false); }
+  }
+
   useEffect(() => {
     live.current = true;
     LocalStorage.getItem<string>(CONNECTION).then(value => {
       if (live.current) setSaved(value ?? null);
+      if (value) return restore();
     }).catch(() => {
       if (live.current) { setError("Could not read the local encrypted connection."); setSaved(null); }
     });
@@ -78,7 +107,7 @@ export default function Command() {
       const label = remainingLabel(active.lockAt());
       setRemaining(previous => previous === label ? previous : label);
     }, 1000);
-    return () => { live.current = false; clearInterval(timer); lock(); };
+    return () => { live.current = false; clearInterval(timer); lock(true); };
   }, []);
 
   useEffect(() => {
@@ -102,23 +131,27 @@ export default function Command() {
       if (p.lockOnPcLock && await readScreenLocked()) throw new Error("Unlock your PC before unlocking the vault.");
       const options = { durationMs: lockDuration(p.autoLock) };
       let encrypted = saved;
+      let credentials: Credentials;
       if (setup) {
         const clientId = String(values.clientId).trim(), clientSecret = String(values.clientSecret).trim();
         const response = await tokenRequest({ client_id: clientId, client_secret: clientSecret, code: String(values.code).trim(), grant_type: "authorization_code" }, p.region);
         if (typeof response.access_token !== "string" || typeof response.refresh_token !== "string") throw new Error("Zoho did not return the required tokens. Generate a fresh Self Client code and reconnect.");
-        const credentials = { clientId, clientSecret, refreshToken: response.refresh_token, region: p.region };
+        credentials = { clientId, clientSecret, refreshToken: response.refresh_token, region: p.region };
         opened = await loadSession(response.access_token, password, { ...options, region: p.region, renewToken: () => refresh(credentials) });
         encrypted = await sealCredentials(credentials, password);
         await LocalStorage.setItem(CONNECTION, encrypted);
       } else {
-        const credentials = await openCredentials(saved!, password);
+        credentials = await openCredentials(saved!, password);
+        const credentialsNow = credentials;
         const token = await refresh(credentials);
-        opened = await loadSession(token, password, { ...options, region: credentials.region ?? "in", renewToken: () => refresh(credentials) });
+        opened = await loadSession(token, password, { ...options, region: credentials.region ?? "in", renewToken: () => refresh(credentialsNow) });
       }
       if (p.lockOnPcLock && await readScreenLocked()) throw new Error("Your PC locked during unlock. Try again after unlocking your PC.");
       if (!live.current) { opened.lock(); return; }
       current.current?.lock(); current.current = opened;
       pcLockEnabled.current = p.lockOnPcLock;
+      if (p.keepUnlocked && Number.isFinite(opened.lockAt())) void storeCached({ v: 1, key: opened.snapshotKey(), credentials, deadline: opened.lockAt() });
+      else void clearCached();
       setRemaining(remainingLabel(opened.lockAt()));
       setSaved(encrypted ?? null); setReconnect(false); setSession(opened);
       setFormId(x => x + 1);
@@ -191,7 +224,7 @@ export default function Command() {
 
   const vaultUrl = endpoints(session.region).vault + "/";
   const toggleDetail = <Action title={showDetail ? "Hide Details" : "Show Details"} icon={Icon.AppWindowSidebarRight} onAction={() => setShowDetail(x => !x)} shortcut={{ modifiers: ["ctrl"], key: "d" }} />;
-  const lockAction = <Action title="Lock Vault" icon={Icon.Lock} style={Action.Style.Destructive} onAction={lock} shortcut={{ modifiers: ["ctrl"], key: "l" }} />;
+  const lockAction = <Action title="Lock Vault" icon={Icon.Lock} style={Action.Style.Destructive} onAction={() => lock()} shortcut={{ modifiers: ["ctrl"], key: "l" }} />;
 
   function entryActions(entry: Entry) {
     const twoFactor = entry.canRead && (entry.hasTotp || entry.oneAuthId)

@@ -202,6 +202,14 @@ live. If your token cannot perform the lookup or request, the extension explains
 that and you can use the official Vault browser extension. Do not paste browser
 cookies, reuse Zoho's client identity, or invent broader scopes to work around it.
 
+### Staying unlocked after the window hides
+
+Vicinae reloads the command each time its window hides. With **Stay unlocked after
+closing** enabled (default), the unlock is cached in the desktop keyring until the
+timer ends, so reopening skips the master password. Install `secret-tool` first
+(`sudo apt install libsecret-tools` on Ubuntu/Debian) and unlock once afterwards. Without it
+the vault locks on every hide. Ctrl+L, PC lock and the timer all remove the cached unlock.
+
 ## 9. Configure locking
 
 Open **Extension Settings**. Changes apply on the next unlock; close and reopen
@@ -219,8 +227,8 @@ For **lock only when my PC locks**, choose **No timer** and enable **Lock on PC
 lock**. For manual locking only, choose **No timer** and disable that checkbox.
 When enabled, monitoring failures lock the vault and show a message.
 
-Timers measure elapsed time, not inactivity. Every choice locks when the command
-view/runtime closes or Vicinae restarts. No master key is written to disk to keep
+Timers measure elapsed time, not inactivity. Every choice locks when Vicinae restarts, and when the command
+view closes unless **Stay unlocked after closing** is on. No master key is written to disk to keep
 unlock across restarts. Hiding the launcher may leave the command running.
 
 ## Troubleshooting
