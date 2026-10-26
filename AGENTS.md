@@ -51,15 +51,18 @@ The form regression test exercises these semantics without live credentials.
   RSA-PKCS1-v1.5 and base64 PKCS#8 RSA-OAEP/SHA-256). Organization-key records need
   not be shared to anyone. Respect view/copy levels and access-control checkout.
   Legacy SHA256 login, HOTP, passkeys, editing and attachments remain unsupported.
-- Enter on a login opens a split details list, not a copy action. Open Website is
-  the first action row; Up/Down + Enter operates fields. Password previews stay
-  masked. Alt+Left returns to search. Unlock submits with plain Enter; selectable
-  Lock Vault rows also use Enter. Keep the returning unlock form description-free.
+- Search shows details inline (List isShowingDetail, Ctrl+D toggles) built from the
+  session index; there is no separate details screen. Enter copies the password,
+  Shift+Enter the username (Ctrl+P/Ctrl+U also kept); actions are grouped Copy/Open/
+  Vault with the same shortcuts on every row. Password previews stay masked. Unlock
+  submits with plain Enter; selectable Lock Vault rows also use Enter. Keep the
+  returning unlock form description-free (context goes in navigationTitle). Row
+  icons are locally tinted Icon.Key, never remote favicons.
 - Search matches names, all returned URLs and usernames across words, locally and
   case-insensitively. Decrypted index data is session-only; never index passwords.
 - Zoho secrets pagination is zero-based (`pageNum=0` first). Never start at 1:
   it silently skips the first page. Validate against `operation.meta.secretcount`
-  when available and show loaded/filter counts plus version in the footer.
+  when available and show loaded/filter counts plus time-to-lock in the footer.
 - Missing list fields must not become blanket unsupported labels. Re-fetch details
   before copying. Keep specific status messages for unavailable keys/permissions.
 - OneAuth links use an explicit push-and-poll action (src/oneauth.ts), with the
