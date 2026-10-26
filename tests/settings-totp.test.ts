@@ -128,12 +128,14 @@ test("day-long session refreshes tokens and a pending renewal cannot reopen a lo
   } finally { session.lock(); globalThis.fetch = originalFetch; Date.now = originalNow; }
 });
 
-test("keyring cache accepts only a complete, unexpired session", async () => {
-  const { parseCached } = await import("../src/keyring");
-  const good = { v: 1, key: "a".repeat(64), credentials: { clientId: "id", clientSecret: "secret", refreshToken: "refresh" }, deadline: 2_000 };
+test("keyring cache accepts only a complete, unexpired, capped session", async () => {
+  const { parseCached, CACHE_MAX_MS } = await import("../src/keyring");
+  const good = { v: 2, key: "a".repeat(64), token: "tok", region: "in", deadline: 2_000 };
   assert.ok(parseCached(JSON.stringify(good), 1_000));
   assert.equal(parseCached(JSON.stringify(good), 2_000), undefined);
+  assert.equal(parseCached(JSON.stringify({ ...good, deadline: 1_000 + CACHE_MAX_MS + 1 }), 1_000), undefined);
   assert.equal(parseCached(JSON.stringify({ ...good, key: "zz" }), 1_000), undefined);
-  assert.equal(parseCached(JSON.stringify({ ...good, credentials: { clientId: "id" } }), 1_000), undefined);
+  assert.equal(parseCached(JSON.stringify({ ...good, token: "" }), 1_000), undefined);
+  assert.equal(parseCached(JSON.stringify({ ...good, v: 1, credentials: {} }), 1_000), undefined);
   assert.equal(parseCached("not json", 1_000), undefined);
 });

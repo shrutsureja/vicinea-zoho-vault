@@ -31,11 +31,13 @@ Keys remain in runtime memory until lock. Key Buffers are overwritten, but JavaS
 strings, runtime memory, swap and crash dumps cannot be reliably erased. Timers
 measure time since unlock. The master password is never kept. Because Vicinae unloads
 the command whenever its window hides, the optional **Stay unlocked after closing**
-preference (default on) keeps the derived field key and the Zoho refresh credentials in
-the desktop keyring (`secret-tool`) until the timer ends. They are removed on manual
-lock, timer end, PC lock or any restore failure, and are never stored if `secret-tool`
-is missing. Any process running as you with an unlocked keyring can read them during
-that window; turn the preference off to keep the old lock-on-hide behavior. Unlock does
+preference (default on) keeps the derived field key and the short-lived Zoho access
+token in the desktop keyring (`secret-tool`). The client secret and refresh token never
+enter it. The entry is removed on manual lock, PC lock (watched by a small background
+process even while Vicinae is hidden), timer end, any restore failure, and after at most
+15 minutes whatever the timer says. Nothing is stored if `secret-tool` is missing. Any
+process running as you with an unlocked keyring can read the entry during that window;
+turn the preference off to keep the old lock-on-hide behavior. Unlock does
 not persist across application or PC restarts. GNOME lock monitoring uses read-only `gdbus`
 signals, polling and checks before unlocking/copying. It is not a universal desktop
 lock detector. Monitoring failures lock the vault when that option is enabled.

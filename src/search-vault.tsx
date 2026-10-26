@@ -1,7 +1,7 @@
 import { Action, ActionPanel, Clipboard, Color, Form, Icon, List, LocalStorage, Toast, getPreferenceValues, openExtensionPreferences, open, showToast } from "@vicinae/api";
 import { createHash } from "node:crypto";
 import { useEffect, useRef, useState } from "react";
-import { Credentials, openCredentials, sealCredentials } from "./crypto";
+import { openCredentials, sealCredentials } from "./crypto";
 import { clearCached, loadCached, storeCached } from "./keyring";
 import { Entry, VaultSession, loadSession, matchesEntry, refresh, tokenRequest } from "./vault";
 import { REGIONS, endpoints, lockDuration, lockLabel, region } from "./settings";
@@ -77,9 +77,8 @@ export default function Command() {
     let opened: VaultSession | undefined;
     try {
       if (p.lockOnPcLock && await readScreenLocked()) throw new Error("PC locked");
-      const credentials = cached.credentials;
-      const token = await refresh(credentials);
-      opened = await loadSession(token, Buffer.from(cached.key, "hex"), { durationMs: cached.deadline - Date.now(), region: credentials.region ?? "in", renewToken: () => refresh(credentials) });
+      // The cache holds only a short-lived token: no renewal, and the session ends at its deadline.
+      opened = await loadSession(cached.token, Buffer.from(cached.key, "hex"), { durationMs: cached.deadline - Date.now(), region: region(cached.region) });
       if (p.lockOnPcLock && await readScreenLocked()) throw new Error("PC locked");
       if (!live.current) { opened.lock(); return; }
       current.current?.lock(); current.current = opened;
@@ -131,26 +130,26 @@ export default function Command() {
       if (p.lockOnPcLock && await readScreenLocked()) throw new Error("Unlock your PC before unlocking the vault.");
       const options = { durationMs: lockDuration(p.autoLock) };
       let encrypted = saved;
-      let credentials: Credentials;
+      let accessToken = "";
       if (setup) {
         const clientId = String(values.clientId).trim(), clientSecret = String(values.clientSecret).trim();
         const response = await tokenRequest({ client_id: clientId, client_secret: clientSecret, code: String(values.code).trim(), grant_type: "authorization_code" }, p.region);
         if (typeof response.access_token !== "string" || typeof response.refresh_token !== "string") throw new Error("Zoho did not return the required tokens. Generate a fresh Self Client code and reconnect.");
-        credentials = { clientId, clientSecret, refreshToken: response.refresh_token, region: p.region };
+        const credentials = { clientId, clientSecret, refreshToken: response.refresh_token, region: p.region };
+        accessToken = response.access_token;
         opened = await loadSession(response.access_token, password, { ...options, region: p.region, renewToken: () => refresh(credentials) });
         encrypted = await sealCredentials(credentials, password);
         await LocalStorage.setItem(CONNECTION, encrypted);
       } else {
-        credentials = await openCredentials(saved!, password);
-        const credentialsNow = credentials;
-        const token = await refresh(credentials);
-        opened = await loadSession(token, password, { ...options, region: credentials.region ?? "in", renewToken: () => refresh(credentialsNow) });
+        const credentials = await openCredentials(saved!, password);
+        accessToken = await refresh(credentials);
+        opened = await loadSession(accessToken, password, { ...options, region: credentials.region ?? "in", renewToken: () => refresh(credentials) });
       }
       if (p.lockOnPcLock && await readScreenLocked()) throw new Error("Your PC locked during unlock. Try again after unlocking your PC.");
       if (!live.current) { opened.lock(); return; }
       current.current?.lock(); current.current = opened;
       pcLockEnabled.current = p.lockOnPcLock;
-      if (p.keepUnlocked && Number.isFinite(opened.lockAt())) void storeCached({ v: 1, key: opened.snapshotKey(), credentials, deadline: opened.lockAt() });
+      if (p.keepUnlocked) void storeCached({ key: opened.snapshotKey(), token: accessToken, region: opened.region, deadline: opened.lockAt() }, { watchLock: p.lockOnPcLock });
       else void clearCached();
       setRemaining(remainingLabel(opened.lockAt()));
       setSaved(encrypted ?? null); setReconnect(false); setSession(opened);

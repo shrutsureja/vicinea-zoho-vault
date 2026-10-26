@@ -208,7 +208,9 @@ Vicinae reloads the command each time its window hides. With **Stay unlocked aft
 closing** enabled (default), the unlock is cached in the desktop keyring until the
 timer ends, so reopening skips the master password. Install `secret-tool` first
 (`sudo apt install libsecret-tools` on Ubuntu/Debian) and unlock once afterwards. Without it
-the vault locks on every hide. Ctrl+L, PC lock and the timer all remove the cached unlock.
+the vault locks on every hide. Ctrl+L, PC lock (even while the window is hidden) and the timer all remove the cached
+unlock, and it never lasts longer than 15 minutes. Only the vault key and a short-lived
+access token are cached; the client secret and refresh token are not.
 
 ## 9. Configure locking
 
